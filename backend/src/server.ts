@@ -59,11 +59,39 @@ app.post('/api/blacklist', async (req, res) => {
     }
 });
 
-app.post('/api/run', async (req, res) => {
-    console.log('Starting manual run...');
-    res.json({ message: 'Scraping started', status: 'running' }); // Respond immediately
+app.post('/api/internships/:id/seen', async (req, res) => {
+    try {
+        await storage.toggleSeen(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to toggle seen status' });
+    }
+});
+
+app.delete('/api/internships/:id', async (req, res) => {
+    try {
+        await storage.deleteInternship(req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete internship' });
+    }
+});
+
+app.get('/api/run', async (req, res) => {
+    console.log('Starting manual run (SSE)...');
+
+    // SSE Headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const sendEvent = (data: any) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
 
     try {
+        sendEvent({ type: 'status', message: 'Fetching listings...' });
+
         // 1. Fetch all listings
         const allListings = await pluginManager.fetchAllListings();
 
@@ -73,21 +101,36 @@ app.post('/api/run', async (req, res) => {
         ).slice(0, 3); // Limit to 3 for now
 
         console.log(`Found ${newListings.length} new internships.`);
+        sendEvent({ type: 'status', message: `Found ${newListings.length} new internships to process.` });
+
+        if (newListings.length === 0) {
+            sendEvent({ type: 'complete', message: 'No new internships found.' });
+            res.end();
+            return;
+        }
 
         for (const listing of newListings) {
             console.log(`Processing: ${listing.title} at ${listing.company}`);
+            sendEvent({ type: 'status', message: `Analyzing ${listing.company}...` });
+
             const details: InternshipDetails = await pluginManager.fetchDetailsForListing(listing);
             const analysis = await aiService.analyzeCompany(details.company, details.description);
 
-            const enrichedDetails = { ...details, aiAnalysis: analysis };
+            const enrichedDetails = { ...details, aiAnalysis: analysis, seen: false };
             await storage.saveInternship(enrichedDetails);
+
+            // Send the new internship to the client
+            sendEvent({ type: 'internship', internship: enrichedDetails });
 
             // Polite delay
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        console.log('Run completed.');
-    } catch (error) {
+        sendEvent({ type: 'complete', message: 'Run completed.' });
+    } catch (error: any) {
         console.error('Error during run:', error);
+        sendEvent({ type: 'error', message: error.message || 'Unknown error' });
+    } finally {
+        res.end();
     }
 });
 

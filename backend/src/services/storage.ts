@@ -62,7 +62,9 @@ export class StorageService {
         if (!this.loaded) await this.load();
 
         if (!this.isProcessed(internship.id)) {
-            this.data.push(internship);
+            // Add 'seen' property default to false
+            const newInternship = { ...internship, seen: false };
+            this.data.push(newInternship);
             await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
             console.log(`Saved internship: ${internship.title}`);
         }
@@ -81,10 +83,33 @@ export class StorageService {
         await fs.writeFile(this.blacklistPath, JSON.stringify(this.blacklist, null, 2), 'utf-8');
     }
 
+    async toggleSeen(id: string) {
+        if (!this.loaded) await this.load();
+        const internship = this.data.find(item => item.id === id);
+        if (internship) {
+            internship.seen = !internship.seen;
+            await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
+            console.log(`Toggled seen for ${id} to ${internship.seen}`);
+        }
+    }
+
+    async deleteInternship(id: string) {
+        if (!this.loaded) await this.load();
+        const initialLength = this.data.length;
+        this.data = this.data.filter(item => item.id !== id);
+        if (this.data.length !== initialLength) {
+            await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
+            console.log(`Deleted internship ${id}`);
+        }
+    }
+
     getInternships() {
         if (!this.loaded) throw new Error('Storage not loaded.');
         // Return internships that are NOT from blacklisted companies
-        return this.data.filter(item => !this.blacklist.includes(item.company));
+        // Sort by newest first (reverse order of insertion)
+        return this.data
+            .filter(item => !this.blacklist.includes(item.company))
+            .reverse();
     }
 
     getBlacklist() {

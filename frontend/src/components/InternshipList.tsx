@@ -16,10 +16,10 @@ interface Internship {
 
 interface InternshipListProps {
     internships: Internship[];
-    onBlacklist: () => void;
+    onUpdate: () => void;
 }
 
-export function InternshipList({ internships, onBlacklist }: InternshipListProps) {
+export function InternshipList({ internships, onUpdate }: InternshipListProps) {
     if (internships.length === 0) {
         return (
             <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
@@ -31,7 +31,7 @@ export function InternshipList({ internships, onBlacklist }: InternshipListProps
     return (
         <div className="grid gap-6">
             {internships.map((internship) => (
-                <InternshipCard key={internship.id} internship={internship} onBlacklist={onBlacklist} />
+                <InternshipCard key={internship.id} internship={internship} onUpdate={onUpdate} />
             ))}
         </div>
     );

@@ -1,44 +1,20 @@
-import { useState } from 'react';
-
 interface RunButtonProps {
-    onRunComplete: () => void;
+    onRun: () => void;
+    isRunning: boolean;
 }
 
-export function RunButton({ onRunComplete }: RunButtonProps) {
-    const [running, setRunning] = useState(false);
-
-    const handleRun = async () => {
-        setRunning(true);
-        try {
-            const res = await fetch('http://localhost:3000/api/run', { method: 'POST' });
-            if (res.ok) {
-                // Poll or wait? The backend returns immediately but runs in background.
-                // For simplicity, we'll just wait a bit or let the user refresh manually, 
-                // but ideally we'd use websockets or polling.
-                // Given the backend logs "Run completed", we could poll /api/internships count?
-                // For now, let's just show a "Started" state and revert after a few seconds.
-                setTimeout(() => {
-                    setRunning(false);
-                    onRunComplete();
-                }, 5000); // Fake wait for demo
-            }
-        } catch (error) {
-            console.error('Run failed:', error);
-            setRunning(false);
-        }
-    };
-
+export function RunButton({ onRun, isRunning }: RunButtonProps) {
     return (
         <button
-            onClick={handleRun}
-            disabled={running}
+            onClick={onRun}
+            disabled={isRunning}
             className={`px-6 py-2.5 rounded-lg font-medium text-white transition-all
-                ${running
+                ${isRunning
                     ? 'bg-blue-400 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-blue-500/30'
                 }`}
         >
-            {running ? (
+            {isRunning ? (
                 <span className="flex items-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
