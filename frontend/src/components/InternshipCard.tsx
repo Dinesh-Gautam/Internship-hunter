@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, Ban, ExternalLink, Sparkles } from 'lucide-react';
 
 interface Internship {
     id: string;
@@ -82,71 +83,69 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
     const companyUrl = getCompanyWebsite();
 
     return (
-        <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all p-6 ${internship.seen ? 'opacity-75 bg-gray-50' : 'border-blue-100 ring-1 ring-blue-50'}`}>
+        <div className={`rounded-3xl border transition-all p-6 ${internship.seen ? 'opacity-75 bg-surface-variant/30 border-transparent' : 'bg-surface border-surface-variant/50 shadow-sm hover:shadow-md'}`}>
             <div className="flex justify-between items-start gap-4">
-                <div className="space-y-1 flex-1">
+                <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-3">
-                        <h3 className="text-xl font-semibold text-gray-900">
-                            <a href={internship.link} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline decoration-2 underline-offset-2">
+                        <h3 className="text-xl font-semibold text-on-surface">
+                            <a href={internship.link} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline decoration-2 underline-offset-2">
                                 {internship.title}
                             </a>
                         </h3>
                         {!internship.seen && (
-                            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
+                            <span className="bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full border border-primary/20">NEW</span>
                         )}
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <p className="text-gray-600 font-medium">{internship.company}</p>
+                        <p className="text-on-surface-variant font-medium">{internship.company}</p>
                         {companyUrl && (
-                            <a href={companyUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 text-sm flex items-center gap-1" title="Visit Company Website">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            <a href={companyUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors" title="Visit Company Website">
+                                <ExternalLink size={16} />
                             </a>
                         )}
                     </div>
 
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-500 mt-2">
-                        <span className="flex items-center gap-1">📍 {internship.location}</span>
-                        <span className="flex items-center gap-1">💰 {internship.stipend}</span>
-                        <span className="flex items-center gap-1">⏱️ {internship.duration}</span>
+                    <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant mt-3">
+                        <span className="flex items-center gap-1.5"><MapPin size={16} /> {internship.location}</span>
+                        <span className="flex items-center gap-1.5"><DollarSign size={16} /> {internship.stipend}</span>
+                        <span className="flex items-center gap-1.5"><Clock size={16} /> {internship.duration}</span>
                     </div>
                 </div>
 
-                <div className="flex gap-2">
-                    <button onClick={handleToggleSeen} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full" title={internship.seen ? "Mark as Unseen" : "Mark as Seen"}>
-                        {internship.seen ? (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                        ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        )}
+                <div className="flex gap-1">
+                    <button onClick={handleToggleSeen} className="p-2.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors" title={internship.seen ? "Mark as Unseen" : "Mark as Seen"}>
+                        {internship.seen ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
-                    <button onClick={handleBlacklist} disabled={loading} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full" title="Blacklist Company">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                    <button onClick={handleBlacklist} disabled={loading} className="p-2.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Blacklist Company">
+                        <Ban size={20} />
                     </button>
-                    <button onClick={handleDelete} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full" title="Delete Internship">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <button onClick={handleDelete} className="p-2.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Delete Internship">
+                        <Trash2 size={20} />
                     </button>
                 </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-50">
-                <div className="prose prose-sm max-w-none text-gray-600">
+            <div className="mt-5 pt-5 border-t border-outline/20">
+                <div className="prose prose-sm max-w-none text-on-surface-variant prose-headings:text-on-surface prose-a:text-primary">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{internship.description}</ReactMarkdown>
                 </div>
 
                 {internship.aiAnalysis && (
-                    <div className="mt-4 bg-blue-50 rounded-lg p-4 text-sm text-blue-800 border border-blue-100">
-                        <div className="font-semibold mb-2 flex items-center gap-2">✨ AI Analysis</div>
-                        <div className="prose prose-sm prose-blue max-w-none">
+                    <div className="mt-5 bg-secondary-container/30 rounded-2xl p-5 text-sm text-on-secondary-container border border-secondary-container/50">
+                        <div className="font-semibold mb-2 flex items-center gap-2 text-primary">
+                            <Sparkles size={16} /> AI Analysis
+                        </div>
+                        <div className="prose prose-sm prose-p:text-on-secondary-container max-w-none">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{internship.aiAnalysis}</ReactMarkdown>
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
                 {internship.skills.map((skill, i) => (
-                    <span key={i} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs rounded-full font-medium border border-gray-200">
+                    <span key={i} className="px-3 py-1 bg-surface-variant text-on-surface-variant text-xs rounded-lg font-medium border border-outline/20">
                         {skill}
                     </span>
                 ))}

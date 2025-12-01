@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Briefcase, Sparkles } from 'lucide-react';
 import { InternshipList } from './components/InternshipList';
 import { RunButton } from './components/RunButton';
 
@@ -72,14 +73,22 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-background text-on-background p-4 md:p-8 font-sans">
       <div className="max-w-5xl mx-auto space-y-8">
-        <header className="flex justify-between items-center">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface p-6 rounded-3xl shadow-sm">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Internship Hunter</h1>
-            <p className="text-gray-500 mt-1">AI-powered internship finder</p>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-3 bg-primary-container rounded-2xl text-on-primary-container">
+                <Briefcase size={28} />
+              </div>
+              <h1 className="text-3xl font-bold text-on-surface">Internship Hunter</h1>
+            </div>
+            <p className="text-on-surface-variant ml-1">AI-powered internship finder</p>
             {statusMessage && (
-              <p className="text-blue-600 font-medium mt-2 animate-pulse">{statusMessage}</p>
+              <div className="flex items-center gap-2 mt-3 text-primary font-medium animate-pulse bg-primary-container/30 px-4 py-2 rounded-full w-fit">
+                <Sparkles size={16} />
+                <p>{statusMessage}</p>
+              </div>
             )}
           </div>
           <RunButton onRun={handleRun} isRunning={isRunning} />

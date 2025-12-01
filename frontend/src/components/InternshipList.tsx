@@ -22,8 +22,8 @@ interface InternshipListProps {
 export function InternshipList({ internships, onUpdate }: InternshipListProps) {
     if (internships.length === 0) {
         return (
-            <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                <p className="text-gray-500 text-lg">No internships found yet. Click "Find Internships" to start.</p>
+            <div className="text-center py-20 bg-surface rounded-3xl border border-outline/20 shadow-sm">
+                <p className="text-on-surface-variant text-lg">No internships found yet. Click "Find Internships" to start.</p>
             </div>
         );
     }
