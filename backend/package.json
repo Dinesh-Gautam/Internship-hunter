@@ -13,7 +13,9 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",
+    "@types/pdf-parse": "^1.1.5",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
@@ -26,6 +28,10 @@
     "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5",
+    "zod": "^4.1.13",
+    "zod-to-json-schema": "^3.25.0"
   }
 }

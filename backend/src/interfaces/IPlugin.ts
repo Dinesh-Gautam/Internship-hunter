@@ -16,6 +16,13 @@ export interface InternshipDetails extends InternshipListing {
     aiAnalysis?: string;
     companyWebsite?: string;
     seen?: boolean;
+    aiMatch?: {
+        score: number;
+        verdict: string;
+        summary: string;
+        pros: string[];
+        cons: string[];
+    };
 }
 
 export interface IPlugin {

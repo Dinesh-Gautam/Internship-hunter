@@ -1,4 +1,5 @@
 node_modules
 blacklist.json
 internships.json
-companines.json
+companies.json
+uploads

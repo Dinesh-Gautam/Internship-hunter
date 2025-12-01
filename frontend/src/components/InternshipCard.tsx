@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, Ban, ExternalLink, Sparkles } from 'lucide-react';
+import { MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, Ban, ExternalLink, Sparkles, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface Internship {
     id: string;
@@ -17,6 +17,13 @@ interface Internship {
     aiAnalysis?: string;
     companyWebsite?: string;
     seen?: boolean;
+    aiMatch?: {
+        matchScore: number;
+        verdict: string;
+        summary: string;
+        pros: string[];
+        cons: string[];
+    };
 }
 
 interface InternshipCardProps {
@@ -141,6 +148,41 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                         </div>
                     </div>
                 )}
+
+                {internship.aiMatch && (
+                    <div className="mt-5 bg-tertiary-container/30 rounded-2xl p-5 text-sm text-on-tertiary-container border border-tertiary-container/50">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="font-semibold flex items-center gap-2 text-tertiary">
+                                <FileText size={16} /> Resume Match: {internship.aiMatch.verdict}
+                            </div>
+                            <span className="font-bold text-lg text-tertiary">{internship.aiMatch.matchScore}%</span>
+                        </div>
+
+                        <div className="w-full bg-surface-variant rounded-full h-2.5 mb-4">
+                            <div
+                                className="bg-tertiary h-2.5 rounded-full transition-all duration-500"
+                                style={{ width: `${internship.aiMatch.matchScore}%` }}
+                            ></div>
+                        </div>
+
+                        <p className="mb-3 italic">{internship.aiMatch.summary}</p>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <h4 className="font-semibold text-green-700 mb-1 flex items-center gap-1"><CheckCircle size={14} /> Pros</h4>
+                                <ul className="list-disc list-inside space-y-1 text-on-surface-variant">
+                                    {internship.aiMatch.pros.map((pro, i) => <li key={i}>{pro}</li>)}
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-red-700 mb-1 flex items-center gap-1"><AlertCircle size={14} /> Cons</h4>
+                                <ul className="list-disc list-inside space-y-1 text-on-surface-variant">
+                                    {internship.aiMatch.cons.map((con, i) => <li key={i}>{con}</li>)}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
@@ -150,6 +192,6 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                     </span>
                 ))}
             </div>
-        </div>
+        </div >
     );
 }

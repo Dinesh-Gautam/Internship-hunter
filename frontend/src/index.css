@@ -9,6 +9,7 @@
     --font-sans: 'Roboto', sans-serif;
 
     --color-primary: var(--md-sys-color-primary);
+    --color-tertiary: var(--md-sys-color-tertiary);
     --color-on-primary: var(--md-sys-color-on-primary);
     --color-primary-container: var(--md-sys-color-primary-container);
     --color-on-primary-container: var(--md-sys-color-on-primary-container);
@@ -32,6 +33,7 @@
 :root {
     /* Material You inspired palette (Static) */
     --md-sys-color-primary: #6750A4;
+    --md-sys-color-tertiary: #6750A4;
     --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-primary-container: #EADDFF;
     --md-sys-color-on-primary-container: #21005D;
@@ -56,4 +58,8 @@ body {
     background-color: var(--md-sys-color-background);
     color: var(--md-sys-color-on-background);
     font-family: 'Roboto', sans-serif;
+}
+
+button {
+    cursor: pointer;
 }

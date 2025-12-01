@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Briefcase, Sparkles } from 'lucide-react';
 import { InternshipList } from './components/InternshipList';
 import { RunButton } from './components/RunButton';
+import { ResumeUpload } from './components/ResumeUpload';
 
 interface Internship {
   id: string;
@@ -16,6 +17,13 @@ interface Internship {
   skills: string[];
   aiAnalysis?: string;
   seen?: boolean;
+  aiMatch?: {
+    score: number;
+    verdict: string;
+    summary: string;
+    pros: string[];
+    cons: string[];
+  };
 }
 
 function App() {
@@ -91,7 +99,10 @@ function App() {
               </div>
             )}
           </div>
-          <RunButton onRun={handleRun} isRunning={isRunning} />
+          <div className="flex gap-3 items-center">
+            <ResumeUpload />
+            <RunButton onRun={handleRun} isRunning={isRunning} />
+          </div>
         </header>
 
         <main>

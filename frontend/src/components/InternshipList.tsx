@@ -12,6 +12,13 @@ interface Internship {
     description: string;
     skills: string[];
     aiAnalysis?: string;
+    aiMatch?: {
+        score: number;
+        verdict: string;
+        summary: string;
+        pros: string[];
+        cons: string[];
+    };
 }
 
 interface InternshipListProps {

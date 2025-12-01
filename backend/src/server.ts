@@ -77,6 +77,44 @@ app.delete('/api/internships/:id', async (req, res) => {
     }
 });
 
+
+// Resume Upload
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { PDFParse as Pdf } from 'pdf-parse';
+
+// Ensure uploads directory exists
+const uploadsDir = path.resolve('uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+
+// Configure Multer
+const upload = multer({
+    dest: 'uploads/',
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
+
+app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Rename to resume.pdf (or keep original name and store path)
+        // For simplicity, we'll overwrite 'resume.pdf' so we always have one active resume
+        const targetPath = path.join('uploads', 'resume.pdf');
+        await fs.promises.rename(req.file.path, targetPath);
+
+        console.log('Resume uploaded and saved to', targetPath);
+        res.json({ success: true, message: 'Resume uploaded successfully' });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: 'Failed to upload resume' });
+    }
+});
+
 app.get('/api/run', async (req, res) => {
     console.log('Starting manual run (SSE)...');
 
@@ -91,6 +129,19 @@ app.get('/api/run', async (req, res) => {
 
     try {
         sendEvent({ type: 'status', message: 'Fetching listings...' });
+
+        // 0. Load Resume Text if available
+        let resumeText = '';
+        try {
+            const resumePath = path.resolve('uploads/resume.pdf');
+            const dataBuffer = await fs.promises.readFile(resumePath);
+            const parser = new Pdf({ data: dataBuffer });
+            const data = await parser.getText();
+            resumeText = data.text;
+            console.log('Loaded resume text, length:', resumeText.length);
+        } catch (e) {
+            console.log('No resume found or failed to parse:', e);
+        }
 
         // 1. Fetch all listings
         const allListings = await pluginManager.fetchAllListings();
@@ -128,7 +179,20 @@ app.get('/api/run', async (req, res) => {
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
 
-            const enrichedDetails = { ...details, aiAnalysis: analysis, seen: false };
+            // Run Match Analysis if resume exists
+            let matchAnalysis = null;
+            if (resumeText) {
+                console.log(`Running Match Analysis for ${details.company}`);
+                sendEvent({ type: 'status', message: `Matching with resume for ${details.company}...` });
+                const matchJson = await aiService.analyzeInternshipMatch(details, resumeText);
+                try {
+                    matchAnalysis = JSON.parse(matchJson);
+                } catch (e) {
+                    console.error('Failed to parse match JSON', e);
+                }
+            }
+
+            const enrichedDetails = { ...details, aiAnalysis: analysis, aiMatch: matchAnalysis, seen: false };
             await storage.saveInternship(enrichedDetails);
 
             // Send the new internship to the client

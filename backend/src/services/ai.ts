@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { z } from "zod";
 
 export class AIService {
     private client: GoogleGenAI | null;
@@ -78,6 +79,88 @@ export class AIService {
             }
             console.error(`AI Error for ${companyName}:`, error.message);
             return `AI analysis failed: ${error.message}`;
+        }
+    }
+
+    async analyzeInternshipMatch(internshipDetails: any, resumeText: string): Promise<string> {
+        if (!this.client) {
+            return JSON.stringify({
+                matchScore: 0,
+                verdict: "AI Disabled",
+                summary: "AI analysis disabled (no API key).",
+                pros: [],
+                cons: []
+            });
+        }
+
+        try {
+            console.log(`Analyzing match for: ${internshipDetails.company}`);
+
+            // Rate limit handling
+            await this.sleep(2000);
+
+            const prompt = `
+        You are an expert career coach and technical recruiter.
+        Compare the candidate's resume with the internship details.
+
+        **Internship Details:**
+        - Role: ${internshipDetails.title}
+        - Company: ${internshipDetails.company}
+        - Description: ${internshipDetails.description.substring(0, 3000)}...
+        - Skills Required: ${internshipDetails.skills.join(', ')}
+
+        **Candidate Resume:**
+        ${resumeText.substring(0, 5000)}
+
+        **Task:**
+        Evaluate how well the candidate's skills and experience match the internship requirements.
+      `;
+
+            const matchSchema = z.object({
+                matchScore: z.number().describe("A score from 0 to 100 indicating the match quality."),
+                verdict: z.enum(["Good Match", "Average Match", "Poor Match"]).describe("The overall verdict of the match."),
+                summary: z.string().describe("Brief summary of the fit (max 1 sentence)."),
+                pros: z.array(z.string()).describe("List of specific pros based on the comparison. Very short and few"),
+                cons: z.array(z.string()).describe("List of specific cons based on the comparison. Very short and few"),
+            });
+
+            const response = await this.client.models.generateContent({
+                model: "gemini-flash-lite-latest",
+                contents: [{
+                    role: 'user',
+                    parts: [{ text: prompt }]
+                }],
+                config: {
+                    responseMimeType: "application/json",
+                    responseJsonSchema: z.toJSONSchema(matchSchema)
+                }
+            });
+
+            if (response && response.text) {
+                return response.text;
+            } else if (response && response.candidates && response.candidates.length > 0) {
+                const candidate = response.candidates[0];
+                if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                    return candidate.content.parts.map(p => p.text).join(' ');
+                }
+            }
+
+            return JSON.stringify({
+                matchScore: 0,
+                verdict: "Error",
+                summary: "No analysis generated.",
+                pros: [],
+                cons: []
+            });
+        } catch (error: any) {
+            console.error(`AI Match Error for ${internshipDetails.company}:`, error.message);
+            return JSON.stringify({
+                matchScore: 0,
+                verdict: "Error",
+                summary: `AI analysis failed: ${error.message}`,
+                pros: [],
+                cons: []
+            });
         }
     }
 }
