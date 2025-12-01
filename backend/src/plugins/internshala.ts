@@ -67,7 +67,18 @@ export class InternShalaPlugin implements IPlugin {
             const html = await response.text();
             const $ = load(html);
 
-            const description = $('.text-container').text().trim();
+            const website = $('.website_link a').attr('href');
+
+            // Extract description from multiple text containers to get full details
+            let description = "";
+            $('.text-container').each((_, el) => {
+                const text = $(el).text().trim();
+                // Skip website link container and empty containers
+                if (!$(el).hasClass('website_link') && text) {
+                    description += text + "\n\n";
+                }
+            });
+
             const skills: string[] = [];
             $('.round_tabs .round_tabs_container span').each((_, el) => {
                 skills.push($(el).text().trim());
@@ -77,9 +88,10 @@ export class InternShalaPlugin implements IPlugin {
 
             return {
                 ...listing,
-                description: description.substring(0, 1000) + '...', // Truncate to avoid huge context
+                description: description.trim(), // Full description
                 skills,
-                postedAt
+                postedAt,
+                companyWebsite: website
             };
         } catch (error: any) {
             console.error(`Failed to fetch details for ${listing.link}:`, error.message);

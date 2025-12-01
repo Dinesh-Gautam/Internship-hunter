@@ -114,7 +114,19 @@ app.get('/api/run', async (req, res) => {
             sendEvent({ type: 'status', message: `Analyzing ${listing.company}...` });
 
             const details: InternshipDetails = await pluginManager.fetchDetailsForListing(listing);
-            const analysis = await aiService.analyzeCompany(details.company, details.description);
+
+            // Check cache for company analysis
+            let analysis = storage.getCompanyAnalysis(details.company);
+            if (analysis) {
+                console.log(`Using cached analysis for ${details.company}`);
+                sendEvent({ type: 'status', message: `Using cached analysis for ${details.company}...` });
+            } else {
+                console.log(`Running AI analysis for ${details.company}`);
+                analysis = await aiService.analyzeCompany(details.company, details.description);
+                await storage.saveCompanyAnalysis(details.company, analysis);
+                // Polite delay only when hitting API
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
 
             const enrichedDetails = { ...details, aiAnalysis: analysis, seen: false };
             await storage.saveInternship(enrichedDetails);
@@ -123,7 +135,7 @@ app.get('/api/run', async (req, res) => {
             sendEvent({ type: 'internship', internship: enrichedDetails });
 
             // Polite delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
         sendEvent({ type: 'complete', message: 'Run completed.' });
     } catch (error: any) {

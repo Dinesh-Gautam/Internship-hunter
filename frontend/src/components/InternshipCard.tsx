@@ -14,6 +14,7 @@ interface Internship {
     description: string;
     skills: string[];
     aiAnalysis?: string;
+    companyWebsite?: string;
     seen?: boolean;
 }
 
@@ -61,6 +62,25 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
         }
     };
 
+    // Extract website from AI analysis if not provided directly
+    const getCompanyWebsite = () => {
+        if (internship.companyWebsite) return internship.companyWebsite;
+
+        if (internship.aiAnalysis) {
+            const match = internship.aiAnalysis.match(/Website:\s*([^\s]+)/i);
+            if (match && match[1] && !match[1].toLowerCase().includes('not found')) {
+                let url = match[1];
+                if (!url.startsWith('http')) {
+                    url = 'https://' + url;
+                }
+                return url;
+            }
+        }
+        return null;
+    };
+
+    const companyUrl = getCompanyWebsite();
+
     return (
         <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all p-6 ${internship.seen ? 'opacity-75 bg-gray-50' : 'border-blue-100 ring-1 ring-blue-50'}`}>
             <div className="flex justify-between items-start gap-4">
@@ -75,7 +95,16 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                             <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">NEW</span>
                         )}
                     </div>
-                    <p className="text-gray-600 font-medium">{internship.company}</p>
+
+                    <div className="flex items-center gap-2">
+                        <p className="text-gray-600 font-medium">{internship.company}</p>
+                        {companyUrl && (
+                            <a href={companyUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 text-sm flex items-center gap-1" title="Visit Company Website">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            </a>
+                        )}
+                    </div>
+
                     <div className="flex flex-wrap gap-3 text-sm text-gray-500 mt-2">
                         <span className="flex items-center gap-1">📍 {internship.location}</span>
                         <span className="flex items-center gap-1">💰 {internship.stipend}</span>

@@ -8,10 +8,13 @@ export class StorageService {
     private data: InternshipDetails[] = [];
     private blacklist: string[] = [];
     private loaded = false;
+    private companiesPath: string;
+    private companies: Record<string, string> = {}; // Cache for company analysis
 
     constructor(filePath?: string) {
         this.filePath = filePath || path.resolve('internships.json');
         this.blacklistPath = path.resolve('blacklist.json');
+        this.companiesPath = path.resolve('companies.json');
     }
 
     async load() {
@@ -40,8 +43,20 @@ export class StorageService {
                 }
             }
 
+            // Load Companies Cache
+            try {
+                const companiesContent = await fs.readFile(this.companiesPath, 'utf-8');
+                this.companies = JSON.parse(companiesContent);
+            } catch (error: any) {
+                if (error.code === 'ENOENT') {
+                    this.companies = {};
+                } else {
+                    throw error;
+                }
+            }
+
             this.loaded = true;
-            console.log(`Loaded ${this.data.length} internships and ${this.blacklist.length} blacklisted companies.`);
+            console.log(`Loaded ${this.data.length} internships, ${this.blacklist.length} blacklisted companies, and ${Object.keys(this.companies).length} cached companies.`);
         } catch (error) {
             console.error('Error loading storage:', error);
             throw error;
@@ -56,6 +71,17 @@ export class StorageService {
     isBlacklisted(company: string): boolean {
         if (!this.loaded) throw new Error('Storage not loaded. Call load() first.');
         return this.blacklist.includes(company);
+    }
+
+    getCompanyAnalysis(company: string): string | undefined {
+        if (!this.loaded) throw new Error('Storage not loaded. Call load() first.');
+        return this.companies[company];
+    }
+
+    async saveCompanyAnalysis(company: string, analysis: string) {
+        if (!this.loaded) await this.load();
+        this.companies[company] = analysis;
+        await fs.writeFile(this.companiesPath, JSON.stringify(this.companies, null, 2), 'utf-8');
     }
 
     async saveInternship(internship: InternshipDetails) {

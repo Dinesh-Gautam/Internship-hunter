@@ -14,6 +14,7 @@ export interface InternshipDetails extends InternshipListing {
     skills: string[];
     postedAt?: string;
     aiAnalysis?: string;
+    companyWebsite?: string;
     seen?: boolean;
 }
 

@@ -33,7 +33,7 @@ export class AIService {
         Analyze the following company and internship description to determine if it is a "Good" or "Bad" opportunity for an intern.
         
         Company: ${companyName}
-        Description Context: ${description.substring(0, 500)}...
+        Description Context: ${description.substring(0, 2000)}...
 
         Task:
         1. Search for the company to verify its legitimacy and reputation.
