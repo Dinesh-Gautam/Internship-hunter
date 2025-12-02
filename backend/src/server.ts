@@ -5,7 +5,7 @@ import { InternShalaPlugin } from './plugins/internshala.js';
 import { StorageService } from './services/storage.js';
 import { AIService } from './services/ai.js';
 import { PluginManager } from './plugin-manager.js';
-import { InternshipDetails } from './interfaces/IPlugin.js';
+import { CompanyDetails, Internship, InternshipDetails } from './interfaces/IPlugin.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,7 +31,15 @@ const pluginManager = new PluginManager();
 app.get('/api/internships', (req, res) => {
     try {
         const internships = storage.getInternships();
-        res.json(internships);
+        const enrichedInternships = internships.map(internship => {
+            const company = storage.getCompanyAnalysis(internship.company);
+            return {
+                ...internship,
+                companyDetails: company?.details,
+                companyAnalysis: company?.analysis
+            };
+        });
+        res.json(enrichedInternships);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch internships' });
     }
@@ -164,39 +172,65 @@ app.get('/api/run', async (req, res) => {
             console.log(`Processing: ${listing.title} at ${listing.company}`);
             sendEvent({ type: 'status', message: `Analyzing ${listing.company}...` });
 
-            const details: InternshipDetails = await pluginManager.fetchDetailsForListing(listing);
+            // 1. Fetch Raw Details
+            const rawDetails = await pluginManager.fetchDetailsForListing(listing);
 
-            // Check cache for company analysis
-            let analysis = storage.getCompanyAnalysis(details.company);
-            if (analysis) {
-                console.log(`Using cached analysis for ${details.company}`);
-                sendEvent({ type: 'status', message: `Using cached analysis for ${details.company}...` });
+            // 2. AI Extraction & Match
+            console.log(`Running AI Extraction & Match for ${listing.company}`);
+            sendEvent({ type: 'status', message: `Extracting details & matching resume...` });
+
+            if (!rawDetails) {
+                sendEvent({ type: 'status', message: `Failed to fetch details for ${listing.company}` });
+                continue;
+            }
+
+            const aiResult = await aiService.extractAndMatch(rawDetails.meta, rawDetails.description, resumeText);
+
+            const extractedDetails = aiResult?.details || {};
+            const matchAnalysis = aiResult?.match;
+
+            // 3. Company Analysis (Grounding)
+            let company = storage.getCompanyAnalysis(listing.company);
+
+            if (company) {
+                console.log(`Using cached company analysis for ${listing.company}`);
+                sendEvent({ type: 'status', message: `Using cached analysis for ${listing.company}...` });
             } else {
-                console.log(`Running AI analysis for ${details.company}`);
-                analysis = await aiService.analyzeCompany(details.company, details.description);
-                await storage.saveCompanyAnalysis(details.company, analysis);
-                // Polite delay only when hitting API
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+                console.log(`Running Company Analysis for ${listing.company}`);
 
-            // Run Match Analysis if resume exists
-            let matchAnalysis = null;
-            if (resumeText) {
-                console.log(`Running Match Analysis for ${details.company}`);
-                sendEvent({ type: 'status', message: `Matching with resume for ${details.company}...` });
-                const matchJson = await aiService.analyzeInternshipMatch(details, resumeText);
-                try {
-                    matchAnalysis = JSON.parse(matchJson);
-                } catch (e) {
-                    console.error('Failed to parse match JSON', e);
+                sendEvent({ type: 'status', message: `Verifying company ${listing.company}...` });
+
+                let companyDetails: CompanyDetails | undefined;
+                let companyAnalysis: string | null;
+
+                companyDetails = await pluginManager.fetchCompanyDetails(listing, rawDetails.companyDetailPageUrl) ?? undefined;
+
+                if (!companyDetails) {
+                    sendEvent({ type: 'status', message: `Failed to fetch company details for ${listing.company}` });
                 }
+
+                companyAnalysis = await aiService.analyzeCompany(listing.company, companyDetails?.location, companyDetails?.about);
+
+                company = {
+                    details: companyDetails,
+                    analysis: companyAnalysis
+                }
+                await storage.saveCompanyAnalysis(listing.company, company);
             }
 
-            const enrichedDetails = { ...details, aiAnalysis: analysis, aiMatch: matchAnalysis, seen: false };
+            // 4. Merge & Save
+            const enrichedDetails: Internship = {
+                ...listing,
+                ...extractedDetails,
+                companyDetailPageUrl: rawDetails.companyDetailPageUrl,
+                matchAnalysis: matchAnalysis,
+                seen: false
+            };
+
             await storage.saveInternship(enrichedDetails);
 
             // Send the new internship to the client
-            sendEvent({ type: 'internship', internship: enrichedDetails });
+            sendEvent({ type: 'internship', internship: enrichedDetails, company });
 
             // Polite delay
             await new Promise(resolve => setTimeout(resolve, 1000));

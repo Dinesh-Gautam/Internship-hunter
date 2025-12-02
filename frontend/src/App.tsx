@@ -3,28 +3,7 @@ import { Briefcase, Sparkles } from 'lucide-react';
 import { InternshipList } from './components/InternshipList';
 import { RunButton } from './components/RunButton';
 import { ResumeUpload } from './components/ResumeUpload';
-
-interface Internship {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  link: string;
-  stipend: string;
-  duration: string;
-  source: string;
-  description: string;
-  skills: string[];
-  aiAnalysis?: string;
-  seen?: boolean;
-  aiMatch?: {
-    score: number;
-    verdict: string;
-    summary: string;
-    pros: string[];
-    cons: string[];
-  };
-}
+import { type Internship } from './components/InternshipCard';
 
 function App() {
   const [internships, setInternships] = useState<Internship[]>([]);
@@ -57,7 +36,12 @@ function App() {
       if (data.type === 'status') {
         setStatusMessage(data.message);
       } else if (data.type === 'internship') {
-        setInternships(prev => [data.internship, ...prev]);
+        const newInternship: Internship = {
+          ...data.internship,
+          companyDetails: data.company?.details,
+          companyAnalysis: data.company?.analysis
+        };
+        setInternships(prev => [newInternship, ...prev]);
         setStatusMessage(`Found new internship: ${data.internship.company}`);
       } else if (data.type === 'complete') {
         setStatusMessage(data.message);

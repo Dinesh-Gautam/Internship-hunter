@@ -1,4 +1,4 @@
-import { IPlugin, InternshipListing, InternshipDetails } from './interfaces/IPlugin.js';
+import { IPlugin, InternshipListing, InternshipDetails, CompanyDetails } from './interfaces/IPlugin.js';
 
 export class PluginManager {
     private plugins: IPlugin[] = [];
@@ -28,11 +28,20 @@ export class PluginManager {
         return allListings;
     }
 
-    async fetchDetailsForListing(listing: InternshipListing): Promise<InternshipDetails> {
+    async fetchDetailsForListing(listing: InternshipListing): Promise<InternshipDetails | null> {
         const plugin = this.plugins.find(p => p.name === listing.source);
         if (!plugin) {
             throw new Error(`No plugin found for source: ${listing.source}`);
         }
         return plugin.fetchDetails(listing);
+    }
+
+    async fetchCompanyDetails(listing: InternshipListing, companyDetailPageUrl: string): Promise<CompanyDetails | null> {
+        const plugin = this.plugins.find(p => p.name === listing.source);
+        if (!plugin) {
+            throw new Error(`No plugin found for source: ${listing.source}`);
+        }
+
+        return plugin.fetchCompanyDetails(companyDetailPageUrl);
     }
 }

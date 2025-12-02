@@ -1,3 +1,5 @@
+import { AiMatch } from "../services/ai.js";
+
 export interface InternshipListing {
     id: string;
     title: string;
@@ -9,20 +11,38 @@ export interface InternshipListing {
     source: string;
 }
 
-export interface InternshipDetails extends InternshipListing {
+export interface InternshipDetails {
+    meta: string;
     description: string;
-    skills: string[];
-    postedAt?: string;
-    aiAnalysis?: string;
-    companyWebsite?: string;
-    seen?: boolean;
-    aiMatch?: {
-        score: number;
-        verdict: string;
-        summary: string;
-        pros: string[];
-        cons: string[];
-    };
+    companyDetailPageUrl: string;
+}
+
+export interface CompanyDetails {
+    name: string,
+    about: string,
+    location: string,
+    industry?: string,
+    size?: string,
+    websiteLink?: string,
+    opportunitiesPosted?: string;
+    candidatesHired: string;
+    hiringSince: string,
+}
+
+export interface Compnay extends savedMetadata {
+    details?: CompanyDetails;
+    analysis: string;
+}
+
+export interface Internship extends InternshipListing, savedMetadata {
+    matchAnalysis: AiMatch['match'];
+    seen: boolean;
+    description?: string;
+    companyDetailPageUrl?: string;
+}
+
+export interface savedMetadata {
+    savedOn?: Date;
 }
 
 export interface IPlugin {
@@ -36,5 +56,7 @@ export interface IPlugin {
     /**
      * Fetches the details for a specific internship listing.
      */
-    fetchDetails(listing: InternshipListing): Promise<InternshipDetails>;
+    fetchDetails(listing: InternshipListing): Promise<InternshipDetails | null>;
+
+    fetchCompanyDetails(companyDetailPageUrl: string): Promise<CompanyDetails | null>;
 }

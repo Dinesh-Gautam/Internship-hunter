@@ -1,25 +1,4 @@
-import { InternshipCard } from "./InternshipCard";
-
-interface Internship {
-    id: string;
-    title: string;
-    company: string;
-    location: string;
-    link: string;
-    stipend: string;
-    duration: string;
-    source: string;
-    description: string;
-    skills: string[];
-    aiAnalysis?: string;
-    aiMatch?: {
-        score: number;
-        verdict: string;
-        summary: string;
-        pros: string[];
-        cons: string[];
-    };
-}
+import { InternshipCard, type Internship } from "./InternshipCard";
 
 interface InternshipListProps {
     internships: Internship[];

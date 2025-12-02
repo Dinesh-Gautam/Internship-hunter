@@ -51,7 +51,7 @@
     --md-sys-color-surface-variant: #E7E0EC;
     --md-sys-color-on-surface-variant: #49454F;
 
-    --md-sys-color-outline: #79747E;
+    --md-sys-color-outline: #cacaca;
 }
 
 body {
@@ -62,4 +62,23 @@ body {
 
 button {
     cursor: pointer;
+}
+
+ol {
+    list-style-type: decimal;
+}
+
+ol li {
+    margin-bottom: 0.2rem;
+    margin-left: 1rem;
+}
+
+table tr {
+    @apply border-b-1 border-b-outline align-baseline;
+
+}
+
+table tr td,
+th {
+    @apply p-1;
 }
