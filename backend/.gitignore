@@ -3,3 +3,4 @@ blacklist.json
 internships.json
 companies.json
 uploads
+.env
