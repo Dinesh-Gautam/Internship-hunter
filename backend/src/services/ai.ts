@@ -10,9 +10,10 @@ const AiMatchSchema = z.object({
         location: z.string().describe("City, State or Country"),
         locationType: z.enum(["Online", "Hybrid", "Onsite"]).describe("Type of internship"),
         duration: z.string(),
-        ppo: z.string().describe("Write about PPO if it is available").optional(),
+        ppo: z.string().describe("write about ppo").optional().nullable(),
         skills: z.array(z.string()),
         applyBy: z.string(),
+        postedOn: z.string().describe("Date of posting the internship"),
     }),
     match: z.object({
         score: z.number(),
@@ -134,7 +135,7 @@ export class AIService {
         2. Compare the internship requirements with the candidate's resume (if provided).
 
         **Extraction Rules:**
-        - description: markdown format (make important words bold, iclude important things e.g(other requirements, perks, etc.), try to compress the description, preserve important information ).
+        - description: markdown format (make important words bold, iclude important things e.g(other requirements, perks, stipend structure etc.), try to compress the description, preserve important information ).
         - stipend: Exact string found.
         - skills: Array of strings.
 

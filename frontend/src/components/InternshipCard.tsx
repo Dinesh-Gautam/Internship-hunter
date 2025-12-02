@@ -4,7 +4,8 @@ import remarkGfm from 'remark-gfm';
 import {
     MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, Ban, ExternalLink,
     Sparkles, FileText, CheckCircle, AlertCircle, Building2,
-    Users, ChevronDown, ChevronUp
+    Users, ChevronDown, ChevronUp,
+    Calendar
 } from 'lucide-react';
 
 
@@ -20,6 +21,7 @@ export interface Internship {
     description?: string;
     skills?: string[];
     ppo: string;
+    postedOn: string;
     matchAnalysis?: {
         score: number;
         verdict: string;
@@ -91,17 +93,6 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
     // Helper to get company website
     const getCompanyWebsite = () => {
         if (internship.companyDetails?.websiteLink) return internship.companyDetails.websiteLink;
-
-        // Fallback to parsing analysis if needed (legacy support)
-        if (internship.companyAnalysis) {
-            const match = internship.companyAnalysis.match(/Website:\s*([^\s]+)/i);
-            if (match && match[1] && !match[1].toLowerCase().includes('not found')) {
-                let url = match[1];
-                if (!url.startsWith('http')) url = 'https://' + url;
-                return url;
-            }
-        }
-        return null;
     };
 
     const companyUrl = getCompanyWebsite();
@@ -178,6 +169,12 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                         <div className="flex items-center gap-2 text-on-surface-variant bg-surface-variant/30 p-2 rounded-lg">
                             <Users size={16} className="text-primary" />
                             <span className="truncate" title="Company Size">{internship.companyDetails.size}</span>
+                        </div>
+                    )}
+                    {internship.postedOn && (
+                        <div className="flex items-center gap-2 text-on-surface-variant bg-surface-variant/30 p-2 rounded-lg">
+                            <Calendar size={16} className="text-primary" />
+                            <span className="truncate" title="Company Size">{internship.postedOn}</span>
                         </div>
                     )}
                 </div>
@@ -313,6 +310,12 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                                             <div className="bg-surface p-2 rounded border border-outline/10">
                                                 <span className="block text-xs text-on-surface-variant/70">Posted</span>
                                                 <span className="font-medium text-on-surface">{internship.companyDetails.opportunitiesPosted}</span>
+                                            </div>
+                                        )}
+                                        {internship.companyDetails.candidatesHired && (
+                                            <div className="bg-surface p-2 rounded border border-outline/10">
+                                                <span className="block text-xs text-on-surface-variant/70">Hired</span>
+                                                <span className="font-medium text-on-surface">{internship.companyDetails.candidatesHired}</span>
                                             </div>
                                         )}
                                     </div>

@@ -126,9 +126,8 @@ export class InternShalaPlugin implements IPlugin {
             const name = container.find('.about-container h2').text().replace(/^About\s+/i, '').trim();
             const about = container.find('.about-container p').text().trim();
 
-            // Attempt to find website link. It might be outside the overview container or not present in the snippet.
-            // We'll try a generic selector or the old one if it still exists elsewhere on the page.
-            const websiteLink = $('.company_website').attr('href') || $('.website-link').attr('href');
+
+            const websiteLink = $('.about-container a').attr('href');
 
             const companyInfo: CompanyDetails = {
                 name: name,

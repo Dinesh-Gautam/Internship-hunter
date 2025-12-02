@@ -14,7 +14,9 @@ app.use(cors());
 app.use(express.json());
 
 const CONFIG = {
-    internshipListUrl: 'https://internshala.com/internships/work-from-home-backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internships/',
+    // internshipListUrl: 'https://internshala.com/internships/work-from-home-backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internships/',
+
+    internshipListUrl: "https://internshala.com/internships/backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internship/",
     storageFile: 'internships.json'
 };
 
@@ -31,7 +33,7 @@ const pluginManager = new PluginManager();
 app.get('/api/internships', (req, res) => {
     try {
         const internships = storage.getInternships();
-        const enrichedInternships = internships.map(internship => {
+        const enrichedInternships = internships.filter(({ seen }) => !seen).map(internship => {
             const company = storage.getCompanyAnalysis(internship.company);
             return {
                 ...internship,
@@ -157,7 +159,7 @@ app.get('/api/run', async (req, res) => {
         // 2. Filter out processed AND blacklisted
         const newListings = allListings.filter(listing =>
             !storage.isProcessed(listing.id) && !storage.isBlacklisted(listing.company)
-        ).slice(0, 3); // Limit to 3 for now
+        )
 
         console.log(`Found ${newListings.length} new internships.`);
         sendEvent({ type: 'status', message: `Found ${newListings.length} new internships to process.` });
