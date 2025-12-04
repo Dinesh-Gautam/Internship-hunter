@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
     MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, Ban, ExternalLink,
-    Sparkles, FileText, CheckCircle, AlertCircle, Building2,
+    Sparkles, FileText, Building2,
     Users, ChevronDown, ChevronUp,
     Calendar, RefreshCw
 } from 'lucide-react';
@@ -48,13 +48,14 @@ export interface Internship {
 interface InternshipCardProps {
     internship: Internship;
     onUpdate: () => void;
+    isSelected?: boolean;
+    onSelect?: () => void;
 }
 
-export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
+export function InternshipCard({ internship, onUpdate, isSelected, onSelect }: InternshipCardProps) {
     const [loading, setLoading] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [expanded, setExpanded] = useState(false);
-    const [showAnalysis, setShowAnalysis] = useState(false);
 
     const { setInternships } = useGlobalState();
 
@@ -80,7 +81,6 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
             await fetch(`http://localhost:3000/api/internships/${internship.id}/seen`, { method: 'POST' });
             setInternships(prev => prev.map(i => i.id === internship.id ? { ...i, seen: !i.seen } : i));
             setExpanded(false);
-            setShowAnalysis(false);
         } catch (error) {
             console.error('Failed to toggle seen:', error);
         }
@@ -133,7 +133,9 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
     };
 
     return (
-        <div className={`rounded-3xl border transition-all duration-300 ${internship.seen ? 'opacity-80 bg-surface-variant/20 border-transparent' : 'bg-surface border-surface-variant'}`}>
+        <div className={`rounded-3xl border transition-all duration-300 ${internship.seen ? 'opacity-80 bg-surface-variant/20 border-transparent' :
+            isSelected ? 'bg-surface border-primary ring-1 ring-primary shadow-md' : 'bg-surface border-surface-variant'
+            }`}>
             {/* Header Section */}
             <div className="p-6">
                 <div className="flex justify-between items-start gap-4">
@@ -257,10 +259,10 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                     </button>
                     {(internship.matchAnalysis || internship.companyAnalysis) && (
                         <button
-                            onClick={() => setShowAnalysis(!showAnalysis)}
-                            className={`flex-1 p-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 border-l border-outline/10 ${showAnalysis ? 'text-primary bg-primary/5' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'}`}
+                            onClick={onSelect}
+                            className={`flex-1 p-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 border-l border-outline/10 ${isSelected ? 'text-primary bg-primary/5' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'}`}
                         >
-                            <Sparkles size={16} /> AI Analysis
+                            <Sparkles size={16} /> {isSelected ? 'Viewing Analysis' : 'View Analysis'}
                         </button>
                     )}
                 </div>
@@ -274,97 +276,6 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                         <div className="prose prose-sm max-w-none text-on-surface-variant prose-headings:text-on-surface prose-a:text-primary prose-strong:text-on-surface">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{internship.description}</ReactMarkdown>
                         </div>
-                    </div>
-                )}
-
-                {/* AI Analysis & Match Section */}
-                {showAnalysis && (
-                    <div className="p-6 border-t border-outline/10 bg-surface/50 space-y-6">
-                        {internship.matchAnalysis && (
-                            <div className="bg-tertiary-container/20 rounded-2xl p-5 border border-outline/30">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="font-semibold flex items-center gap-2 text-tertiary">
-                                        <FileText size={18} /> Resume Match
-                                    </div>
-                                    <span className={`font-bold px-3 py-1 rounded-full text-sm ${getScoreColor(matchScore)}`}>
-                                        {internship.matchAnalysis.verdict}
-                                    </span>
-                                </div>
-
-                                <p className="mb-4 text-on-surface-variant text-sm italic border-l-2 border-tertiary/30 pl-3">
-                                    "{internship.matchAnalysis.summary}"
-                                </p>
-
-                                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <h4 className="font-semibold text-green-700 mb-2 flex items-center gap-1.5"><CheckCircle size={14} /> Pros</h4>
-                                        <ul className="space-y-1.5">
-                                            {internship.matchAnalysis.pros.map((pro, i) => (
-                                                <li key={i} className="flex items-start gap-2 text-on-surface-variant">
-                                                    <span className="mt-1.5 w-1 h-1 rounded-full bg-green-500 shrink-0"></span>
-                                                    <ReactMarkdown>{pro}</ReactMarkdown>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold text-red-700 mb-2 flex items-center gap-1.5"><AlertCircle size={14} /> Cons</h4>
-                                        <ul className="space-y-1.5">
-                                            {internship.matchAnalysis.cons.map((con, i) => (
-                                                <li key={i} className="flex items-start gap-2 text-on-surface-variant">
-                                                    <span className="mt-1.5 w-1 h-1 rounded-full bg-red-500 shrink-0"></span>
-                                                    <ReactMarkdown>{con}</ReactMarkdown>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Company Details & Analysis */}
-                        {(internship.companyDetails || internship.companyAnalysis) && (
-                            <div className="bg-secondary-container/20 rounded-2xl p-5 border border-secondary-container/30">
-                                <div className="font-semibold flex items-center gap-2 text-secondary mb-4">
-                                    <Building2 size={18} /> Company Insights
-                                </div>
-
-                                {internship.companyDetails && (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 text-sm">
-                                        {internship.companyDetails.industry && (
-                                            <div className="bg-surface p-2 rounded border border-outline/10">
-                                                <span className="block text-xs text-on-surface-variant/70">Industry</span>
-                                                <span className="font-medium text-on-surface">{internship.companyDetails.industry}</span>
-                                            </div>
-                                        )}
-                                        {internship.companyDetails.hiringSince && (
-                                            <div className="bg-surface p-2 rounded border border-outline/10">
-                                                <span className="block text-xs text-on-surface-variant/70">Hiring Since</span>
-                                                <span className="font-medium text-on-surface">{internship.companyDetails.hiringSince}</span>
-                                            </div>
-                                        )}
-                                        {internship.companyDetails.opportunitiesPosted && (
-                                            <div className="bg-surface p-2 rounded border border-outline/10">
-                                                <span className="block text-xs text-on-surface-variant/70">Posted</span>
-                                                <span className="font-medium text-on-surface">{internship.companyDetails.opportunitiesPosted}</span>
-                                            </div>
-                                        )}
-                                        {internship.companyDetails.candidatesHired && (
-                                            <div className="bg-surface p-2 rounded border border-outline/10">
-                                                <span className="block text-xs text-on-surface-variant/70">Hired</span>
-                                                <span className="font-medium text-on-surface">{internship.companyDetails.candidatesHired}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {internship.companyAnalysis && (
-                                    <div className="prose prose-sm prose-p:text-on-surface-variant prose-headings:text-on-surface max-w-none bg-surface/50 p-4 rounded-xl border border-outline/10">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{internship.companyAnalysis}</ReactMarkdown>
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 )}
 

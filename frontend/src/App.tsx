@@ -6,10 +6,10 @@ import { RunButton } from './components/RunButton';
 import { useGlobalState } from './store/global';
 import { useState } from 'react';
 
-function App() {
+export function Header() {
   const [isRunning, setIsRunning] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const { internships, fetchInternships, setInternships } = useGlobalState();
+  const { setInternships } = useGlobalState();
 
   const handleRun = async () => {
     setIsRunning(true);
@@ -51,31 +51,35 @@ function App() {
     };
   };
 
-  return (
-    <div className="min-h-screen bg-background text-on-background p-4 md:p-8 font-sans">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface p-6 rounded-3xl shadow-sm">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="p-3 bg-primary-container rounded-2xl text-on-primary-container">
-                <Briefcase size={28} />
-              </div>
-              <h1 className="text-3xl font-bold text-on-surface">Internship Hunter</h1>
-            </div>
-            <p className="text-on-surface-variant ml-1">AI-powered internship finder</p>
-            {statusMessage && (
-              <div className="flex items-center gap-2 mt-3 text-primary font-medium animate-pulse bg-primary-container/30 px-4 py-2 rounded-full w-fit">
-                <Sparkles size={16} />
-                <p>{statusMessage}</p>
-              </div>
-            )}
-          </div>
-          <div className="flex gap-3 items-center">
-            <ResumeUpload />
-            <RunButton onRun={handleRun} isRunning={isRunning} />
-          </div>
-        </header>
 
+  return <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface px-6 rounded-3xl">
+    <div>
+      <div className="flex items-center gap-3 mb-1">
+        <div className="p-3 bg-primary-container rounded-2xl text-on-primary-container">
+          <Briefcase size={28} />
+        </div>
+        <h1 className="text-3xl font-bold text-on-surface">Internship Hunter</h1>
+      </div>
+      <p className="text-on-surface-variant ml-1">AI-powered internship finder</p>
+      {statusMessage && (
+        <div className="flex items-center gap-2 mt-3 text-primary font-medium animate-pulse bg-primary-container/30 px-4 py-2 rounded-full w-fit">
+          <Sparkles size={16} />
+          <p>{statusMessage}</p>
+        </div>
+      )}
+    </div>
+    <div className="flex gap-3 items-center">
+      <ResumeUpload />
+      <RunButton onRun={handleRun} isRunning={isRunning} />
+    </div>
+  </header>
+}
+
+function App() {
+  const { internships, fetchInternships } = useGlobalState();
+  return (
+    <div className="min-h-screen bg-background text-on-background font-sans ">
+      <div className="p-4">
         <main>
           <InternshipList internships={internships} onUpdate={fetchInternships} />
         </main>
