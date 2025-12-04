@@ -12,21 +12,13 @@ interface InternshipListProps {
 export function InternshipList({ internships, onUpdate }: InternshipListProps) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    if (internships.length === 0) {
-        return (
-            <div className="text-center py-20 bg-surface rounded-3xl border border-outline/20 shadow-sm">
-                <p className="text-on-surface-variant text-lg">No internships found yet. Click "Find Internships" to start.</p>
-            </div>
-        );
-    }
-
     const selectedInternship = internships.find(i => i.id === selectedId);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
             <div className="grid gap-6 content-start h-[calc(100vh-2rem)] overflow-y-auto">
                 <Header />
-                {internships.map((internship) => (
+                {internships.length > 0 ? internships.map((internship) => (
                     <InternshipCard
                         key={internship.id}
                         internship={internship}
@@ -34,7 +26,9 @@ export function InternshipList({ internships, onUpdate }: InternshipListProps) {
                         isSelected={selectedId === internship.id}
                         onSelect={() => setSelectedId(selectedId === internship.id ? null : internship.id)}
                     />
-                ))}
+                )) : <div className="text-center py-20 bg-surface rounded-3xl border border-outline/20 shadow-sm">
+                    <p className="text-on-surface-variant text-lg">No internships found yet. Click "Find Internships" to start.</p>
+                </div>}
             </div>
 
             <div className="hidden lg:block h-[calc(100vh-2rem)]">
