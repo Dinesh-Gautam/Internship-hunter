@@ -209,8 +209,145 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
     }
 });
 
+app.get('/api/presets', (req, res) => {
+    try {
+        const presets = storage.getPresets();
+        res.json(presets);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch presets' });
+    }
+});
+
+app.post('/api/presets', async (req, res) => {
+    const { name, urls } = req.body;
+    if (!name || !urls || !Array.isArray(urls)) {
+        return res.status(400).json({ error: 'Name and URLs array are required' });
+    }
+    try {
+        await storage.savePreset(name, urls);
+        res.json({ success: true, presets: storage.getPresets() });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to save preset' });
+    }
+});
+
+app.delete('/api/presets/:name', async (req, res) => {
+    const { name } = req.params;
+    try {
+        await storage.deletePreset(name);
+        res.json({ success: true, presets: storage.getPresets() });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete preset' });
+    }
+});
+
+app.get('/api/companies', (req, res) => {
+    try {
+        const companies = storage.getCompanies();
+        const blacklist = storage.getBlacklist();
+        const internships = storage.getInternships();
+
+        const result = Object.entries(companies).map(([name, data]) => {
+            const companyInternships = internships.filter(i => i.company === name);
+            return {
+                name,
+                ...data,
+                isBlacklisted: blacklist.includes(name),
+                internships: companyInternships
+            };
+        });
+
+        // Also include companies that have internships but no explicit company record yet (if any)
+        // Although the current logic ensures company record creation on run, this is a safety net or just good practice
+        // But for now, let's stick to the companies we know about from the companies storage + those in internships if we want to be thorough.
+        // Actually, let's just stick to the companies storage for now as it's the source of truth for "Company Management".
+        // If a company is in internships but not in companies.json, it might be missed here if we only iterate companies.json.
+        // Let's ensure we capture all unique companies from internships too.
+
+        const companiesFromInternships = new Set(internships.map(i => i.company));
+        companiesFromInternships.forEach(companyName => {
+            if (!companies[companyName]) {
+                const companyInternships = internships.filter(i => i.company === companyName);
+                result.push({
+                    name: companyName,
+                    isBlacklisted: blacklist.includes(companyName),
+                    internships: companyInternships
+                });
+            }
+        });
+
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch companies' });
+    }
+});
+
+app.post('/api/companies', async (req, res) => {
+    const { name, location, about } = req.body;
+    if (!name) {
+        return res.status(400).json({ error: 'Company name is required' });
+    }
+    try {
+        const existing = storage.getCompany(name);
+        const details: CompanyDetails = {
+            name,
+            location: location || existing?.details?.location || '',
+            about: about || existing?.details?.about || '',
+            candidatesHired: existing?.details?.candidatesHired || '',
+            hiringSince: existing?.details?.hiringSince || '',
+            opportunitiesPosted: existing?.details?.opportunitiesPosted || '',
+            websiteLink: existing?.details?.websiteLink || '',
+            industry: existing?.details?.industry || '',
+            size: existing?.details?.size || ''
+        };
+
+        await storage.saveCompany(name, {
+            details,
+            analysis: existing?.analysis
+        });
+
+        // Trigger analysis if new
+        if (!existing?.analysis) {
+            const analysis = await aiService.analyzeCompany(name, details.location, details.about);
+            await storage.saveCompany(name, { details, analysis: analysis || undefined });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error adding company:", error);
+        res.status(500).json({ error: 'Failed to add company' });
+    }
+});
+
+app.post('/api/companies/:name/analysis', async (req, res) => {
+    const { name } = req.params;
+    try {
+        const company = storage.getCompany(name);
+        if (!company) {
+            return res.status(404).json({ error: 'Company not found' });
+        }
+        const analysis = await aiService.analyzeCompany(name, company.details?.location, company.details?.about);
+        await storage.saveCompany(name, { ...company, analysis: analysis || undefined });
+        res.json({ success: true, analysis });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to generate analysis' });
+    }
+});
+
+app.post('/api/companies/:name/blacklist', async (req, res) => {
+    const { name } = req.params;
+    try {
+        await storage.toggleBlacklist(name);
+        res.json({ success: true, isBlacklisted: storage.isBlacklisted(name) });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to toggle blacklist' });
+    }
+});
+
+
 app.get('/api/run', async (req, res) => {
     console.log('Starting manual run (SSE)...');
+    const presetName = req.query.preset as string;
 
     // SSE Headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -228,17 +365,34 @@ app.get('/api/run', async (req, res) => {
         let resumeText = '';
         try {
             const resumePath = path.resolve('uploads/resume.pdf');
-            const dataBuffer = await fs.promises.readFile(resumePath);
-            const parser = new Pdf({ data: dataBuffer });
-            const data = await parser.getText();
-            resumeText = data.text;
-            console.log('Loaded resume text, length:', resumeText.length);
+            if (fs.existsSync(resumePath)) {
+                const dataBuffer = await fs.promises.readFile(resumePath);
+                const parser = new Pdf({ data: dataBuffer });
+                const data = await parser.getText();
+                resumeText = data.text;
+                console.log('Loaded resume text, length:', resumeText.length);
+            }
         } catch (e) {
             console.log('No resume found or failed to parse:', e);
         }
 
         // 1. Fetch all listings
-        const allListings = await pluginManager.fetchAllListings();
+        let allListings: any[] = [];
+        if (presetName) {
+            const presets = storage.getPresets();
+            const urls = presets[presetName];
+            if (urls) {
+                console.log(`Using preset: ${presetName} with ${urls.length} URLs`);
+                sendEvent({ type: 'status', message: `Using preset: ${presetName}...` });
+                allListings = await pluginManager.fetchListingsFromUrls(urls);
+            } else {
+                sendEvent({ type: 'error', message: `Preset ${presetName} not found.` });
+                res.end();
+                return;
+            }
+        } else {
+            allListings = await pluginManager.fetchAllListings();
+        }
 
         // 2. Filter out processed AND blacklisted
         const newListings = allListings.filter(listing =>

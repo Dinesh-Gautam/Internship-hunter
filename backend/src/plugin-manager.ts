@@ -14,8 +14,35 @@ export class PluginManager {
         return this.plugins.find(p => p.name === source);
     }
 
+    getPluginForUrl(url: string): IPlugin | undefined {
+        return this.plugins.find(p => p.canHandle(url));
+    }
+
+    async fetchListingsFromUrls(urls: string[]): Promise<InternshipListing[]> {
+        console.log(`Fetching listings from ${urls.length} URLs...`);
+        const allListings: InternshipListing[] = [];
+
+        for (const url of urls) {
+            const plugin = this.getPluginForUrl(url);
+            if (plugin) {
+                try {
+                    console.log(`Running plugin: ${plugin.name} for ${url}`);
+                    const listings = await plugin.fetchListings(url);
+                    console.log(`Plugin ${plugin.name} found ${listings.length} listings from ${url}.`);
+                    allListings.push(...listings);
+                } catch (error) {
+                    console.error(`Error in plugin ${plugin.name} for ${url}:`, error);
+                }
+            } else {
+                console.warn(`No plugin found for URL: ${url}`);
+            }
+        }
+
+        return allListings;
+    }
+
     async fetchAllListings(): Promise<InternshipListing[]> {
-        console.log("Fetching listings from all plugins...");
+        console.log("Fetching listings from all plugins (default config)...");
         const allListings: InternshipListing[] = [];
 
         for (const plugin of this.plugins) {

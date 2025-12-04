@@ -54,9 +54,15 @@ export interface IPlugin {
     name: string;
 
     /**
-     * Fetches the list of internships from the source.
+     * Checks if the plugin can handle the given URL.
      */
-    fetchListings(): Promise<InternshipListing[]>;
+    canHandle(url: string): boolean;
+
+    /**
+     * Fetches the list of internships from the source.
+     * @param url Optional URL to fetch listings from. If not provided, uses the default configuration.
+     */
+    fetchListings(url?: string): Promise<InternshipListing[]>;
 
     /**
      * Fetches the details for a specific internship listing.

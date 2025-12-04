@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { InternshipCard, type Internship } from "./InternshipCard";
 import { InternshipAnalysis } from "./InternshipAnalysis";
 import { Sparkles } from 'lucide-react';
-import { Header } from '../App';
-
 interface InternshipListProps {
     internships: Internship[];
     onUpdate: () => void;
@@ -17,7 +15,6 @@ export function InternshipList({ internships, onUpdate }: InternshipListProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
             <div className="grid gap-6 content-start h-[calc(100vh-2rem)] overflow-y-auto">
-                <Header />
                 {internships.length > 0 ? internships.map((internship) => (
                     <InternshipCard
                         key={internship.id}
@@ -41,6 +38,6 @@ export function InternshipList({ internships, onUpdate }: InternshipListProps) {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

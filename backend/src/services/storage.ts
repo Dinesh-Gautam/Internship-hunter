@@ -11,11 +11,14 @@ export class StorageService {
     private loaded = false;
     private companiesPath: string;
     private companies: Record<string, Compnay> = {};
+    private presetsPath: string;
+    private presets: Record<string, string[]> = {};
 
     constructor(filePath?: string) {
         this.filePath = filePath || path.resolve('internships.json');
         this.blacklistPath = path.resolve('blacklist.json');
         this.companiesPath = path.resolve('companies.json');
+        this.presetsPath = path.resolve('presets.json');
     }
 
     async load() {
@@ -56,8 +59,20 @@ export class StorageService {
                 }
             }
 
+            // Load Presets
+            try {
+                const presetsContent = await fs.readFile(this.presetsPath, 'utf-8');
+                this.presets = JSON.parse(presetsContent);
+            } catch (error: any) {
+                if (error.code === 'ENOENT') {
+                    this.presets = {};
+                } else {
+                    throw error;
+                }
+            }
+
             this.loaded = true;
-            console.log(`Loaded ${this.internships.length} internships, ${this.blacklist.length} blacklisted companies, and ${Object.keys(this.companies).length} cached companies.`);
+            console.log(`Loaded ${this.internships.length} internships, ${this.blacklist.length} blacklisted companies, ${Object.keys(this.companies).length} cached companies, and ${Object.keys(this.presets).length} presets.`);
         } catch (error) {
             console.error('Error loading storage:', error);
             throw error;
@@ -77,6 +92,11 @@ export class StorageService {
     getCompany(company: string): Compnay | undefined {
         if (!this.loaded) throw new Error('Storage not loaded. Call load() first.');
         return this.companies[company] ?? undefined;
+    }
+
+    getCompanies() {
+        if (!this.loaded) throw new Error('Storage not loaded. Call load() first.');
+        return this.companies;
     }
 
     async saveCompany(company: string, data: Compnay) {
@@ -142,5 +162,24 @@ export class StorageService {
     getBlacklist() {
         if (!this.loaded) throw new Error('Storage not loaded.');
         return this.blacklist;
+    }
+
+    getPresets() {
+        if (!this.loaded) throw new Error('Storage not loaded.');
+        return this.presets;
+    }
+
+    async savePreset(name: string, urls: string[]) {
+        if (!this.loaded) await this.load();
+        this.presets[name] = urls;
+        await fs.writeFile(this.presetsPath, JSON.stringify(this.presets, null, 2), 'utf-8');
+    }
+
+    async deletePreset(name: string) {
+        if (!this.loaded) await this.load();
+        if (this.presets[name]) {
+            delete this.presets[name];
+            await fs.writeFile(this.presetsPath, JSON.stringify(this.presets, null, 2), 'utf-8');
+        }
     }
 }

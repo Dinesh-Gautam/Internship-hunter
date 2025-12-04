@@ -12,9 +12,14 @@ export class InternShalaPlugin implements IPlugin {
         this.baseUrl = url.protocol + "//" + url.host;
     }
 
-    async fetchListings(): Promise<InternshipListing[]> {
-        console.log(`Fetching listing page from: ${this.listingPageUrl}`);
-        const response = await fetch(this.listingPageUrl);
+    canHandle(url: string): boolean {
+        return url.includes("internshala.com");
+    }
+
+    async fetchListings(url?: string): Promise<InternshipListing[]> {
+        const targetUrl = url || this.listingPageUrl;
+        console.log(`Fetching listing page from: ${targetUrl}`);
+        const response = await fetch(targetUrl);
         const html = await response.text();
         return this.parseListingPage(html);
     }
