@@ -22,6 +22,7 @@ interface Company {
     analysis?: string;
     isBlacklisted: boolean;
     internships?: Internship[];
+    savedOn?: string;
 }
 
 export function CompaniesPage() {
@@ -119,10 +120,13 @@ export function CompaniesPage() {
             return matchesFilter && matchesSearch;
         })
         .sort((a, b) => {
+            const dateA = a.savedOn ? new Date(a.savedOn).getTime() : 0;
+            const dateB = b.savedOn ? new Date(b.savedOn).getTime() : 0;
+
             if (sortOrder === 'newest') {
-                return a.name.localeCompare(b.name);
+                return dateB - dateA;
             } else {
-                return b.name.localeCompare(a.name);
+                return dateA - dateB;
             }
         });
 
@@ -210,7 +214,7 @@ export function CompaniesPage() {
                         className="flex items-center gap-2 px-4 py-2 bg-surface border border-outline/20 rounded-full text-on-surface hover:bg-surface-variant/50 transition-colors"
                     >
                         <ArrowUpDown size={18} />
-                        {sortOrder === 'newest' ? 'Name (A-Z)' : 'Name (Z-A)'}
+                        {sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}
                     </button>
                     <div className="flex bg-surface rounded-full p-1 border border-outline/20">
                         {(['all', 'whitelisted', 'blacklisted'] as const).map((f) => (
@@ -218,8 +222,8 @@ export function CompaniesPage() {
                                 key={f}
                                 onClick={() => setFilter(f)}
                                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${filter === f
-                                        ? 'bg-primary-container text-on-primary-container'
-                                        : 'text-on-surface-variant hover:bg-surface-variant/50'
+                                    ? 'bg-primary-container text-on-primary-container'
+                                    : 'text-on-surface-variant hover:bg-surface-variant/50'
                                     }`}
                             >
                                 {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -266,8 +270,8 @@ export function CompaniesPage() {
                                 <button
                                     onClick={(e) => { e.stopPropagation(); toggleBlacklist(company.name); }}
                                     className={`p-2 rounded-full transition-colors ${company.isBlacklisted
-                                            ? 'text-on-surface-variant hover:bg-surface-variant/20'
-                                            : 'text-error hover:bg-error/10'
+                                        ? 'text-on-surface-variant hover:bg-surface-variant/20'
+                                        : 'text-error hover:bg-error/10'
                                         }`}
                                     title={company.isBlacklisted ? "Remove from Blacklist" : "Add to Blacklist"}
                                 >

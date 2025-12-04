@@ -5,6 +5,8 @@ type GlobalState = {
     internships: Internship[];
     fetchInternships: () => Promise<void>;
     setInternships: React.Dispatch<React.SetStateAction<Internship[]>>;
+    filter: 'all' | 'seen' | 'unseen';
+    setFilter: React.Dispatch<React.SetStateAction<'all' | 'seen' | 'unseen'>>;
 }
 
 const globalStateContext = createContext<GlobalState | null>(null);
@@ -19,10 +21,11 @@ export const useGlobalState = () => {
 
 export function GlobalStateProvider({ children }: { children: React.ReactNode }) {
     const [internships, setInternships] = useState<Internship[]>([]);
+    const [filter, setFilter] = useState<'all' | 'seen' | 'unseen'>('unseen');
 
     const fetchInternships = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/internships');
+            const res = await fetch(`http://localhost:3000/api/internships?filter=${filter}`);
             const data = await res.json();
             setInternships(data);
         } catch (error) {
@@ -32,12 +35,12 @@ export function GlobalStateProvider({ children }: { children: React.ReactNode })
 
     useEffect(() => {
         fetchInternships();
-    }, []);
+    }, [filter]);
 
 
 
     return (
-        <globalStateContext.Provider value={{ internships, fetchInternships, setInternships }}>
+        <globalStateContext.Provider value={{ internships, fetchInternships, setInternships, filter, setFilter }}>
             {children}
         </globalStateContext.Provider>
     );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Plus, Save } from 'lucide-react';
+import { Trash2, Plus, Save, Edit2 } from 'lucide-react';
 
 interface Presets {
     [name: string]: string[];
@@ -8,6 +8,7 @@ interface Presets {
 export function PresetsPage() {
     const [presets, setPresets] = useState<Presets>({});
     const [isCreating, setIsCreating] = useState(false);
+    const [editingPreset, setEditingPreset] = useState<string | null>(null);
     const [newPresetName, setNewPresetName] = useState('');
     const [newPresetUrls, setNewPresetUrls] = useState('');
     const [error, setError] = useState('');
@@ -38,6 +39,13 @@ export function PresetsPage() {
         }
 
         try {
+            // If editing and name changed, delete old one
+            if (editingPreset && editingPreset !== newPresetName) {
+                await fetch(`http://localhost:3000/api/presets/${encodeURIComponent(editingPreset)}`, {
+                    method: 'DELETE'
+                });
+            }
+
             const res = await fetch('http://localhost:3000/api/presets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -47,6 +55,7 @@ export function PresetsPage() {
                 const data = await res.json();
                 setPresets(data.presets);
                 setIsCreating(false);
+                setEditingPreset(null);
                 setNewPresetName('');
                 setNewPresetUrls('');
                 setError('');
@@ -56,6 +65,13 @@ export function PresetsPage() {
         } catch (err) {
             setError('Error saving preset');
         }
+    };
+
+    const handleEdit = (name: string) => {
+        setEditingPreset(name);
+        setNewPresetName(name);
+        setNewPresetUrls(presets[name].join('\n'));
+        setIsCreating(true);
     };
 
     const handleDelete = async (name: string) => {
@@ -81,7 +97,12 @@ export function PresetsPage() {
                     <p className="text-on-surface-variant">Manage your custom search lists</p>
                 </div>
                 <button
-                    onClick={() => setIsCreating(true)}
+                    onClick={() => {
+                        setIsCreating(true);
+                        setEditingPreset(null);
+                        setNewPresetName('');
+                        setNewPresetUrls('');
+                    }}
                     className="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-full hover:bg-primary/90 transition-colors"
                 >
                     <Plus size={20} />
@@ -91,7 +112,7 @@ export function PresetsPage() {
 
             {isCreating && (
                 <div className="bg-surface p-6 rounded-3xl border border-outline/20 shadow-lg mb-8 animate-in fade-in slide-in-from-top-4">
-                    <h2 className="text-xl font-semibold mb-4 text-on-surface">New Preset</h2>
+                    <h2 className="text-xl font-semibold mb-4 text-on-surface">{editingPreset ? 'Edit Preset' : 'New Preset'}</h2>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-on-surface-variant mb-1">Preset Name</label>
@@ -115,7 +136,7 @@ export function PresetsPage() {
                         {error && <p className="text-error text-sm">{error}</p>}
                         <div className="flex justify-end gap-3">
                             <button
-                                onClick={() => setIsCreating(false)}
+                                onClick={() => { setIsCreating(false); setEditingPreset(null); }}
                                 className="px-4 py-2 text-on-surface-variant hover:bg-surface-variant/20 rounded-full transition-colors"
                             >
                                 Cancel
@@ -145,13 +166,22 @@ export function PresetsPage() {
                                 ))}
                             </div>
                         </div>
-                        <button
-                            onClick={() => handleDelete(name)}
-                            className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                            title="Delete Preset"
-                        >
-                            <Trash2 size={20} />
-                        </button>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={() => handleEdit(name)}
+                                className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
+                                title="Edit Preset"
+                            >
+                                <Edit2 size={20} />
+                            </button>
+                            <button
+                                onClick={() => handleDelete(name)}
+                                className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors"
+                                title="Delete Preset"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                        </div>
                     </div>
                 ))}
                 {Object.keys(presets).length === 0 && !isCreating && (

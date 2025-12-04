@@ -36,8 +36,16 @@ const pluginManager = new PluginManager();
 
 app.get('/api/internships', (req, res) => {
     try {
+        const filter = req.query.filter as string || 'all';
         const internships = storage.getInternships();
-        const enrichedInternships = internships.filter(({ seen }) => !seen).map(internship => {
+
+        const filteredInternships = internships.filter(i => {
+            if (filter === 'seen') return i.seen;
+            if (filter === 'unseen') return !i.seen;
+            return true;
+        });
+
+        const enrichedInternships = filteredInternships.map(internship => {
             const company = storage.getCompany(internship.company);
             return {
                 ...internship,
@@ -206,6 +214,16 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ error: 'Failed to upload resume' });
+    }
+});
+
+app.get('/api/resume/status', async (req, res) => {
+    try {
+        const resumePath = path.resolve('uploads/resume.pdf');
+        const exists = await fs.promises.access(resumePath).then(() => true).catch(() => false);
+        res.json({ exists });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to check resume status' });
     }
 });
 

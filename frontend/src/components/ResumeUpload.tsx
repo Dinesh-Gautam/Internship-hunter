@@ -1,10 +1,25 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 export function ResumeUpload() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [resumeExists, setResumeExists] = useState(false);
+
+    useEffect(() => {
+        checkResumeStatus();
+    }, []);
+
+    const checkResumeStatus = async () => {
+        try {
+            const res = await fetch('http://localhost:3000/api/resume/status');
+            const data = await res.json();
+            setResumeExists(data.exists);
+        } catch (error) {
+            console.error('Failed to check resume status', error);
+        }
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -29,6 +44,7 @@ export function ResumeUpload() {
 
             if (res.ok) {
                 setUploadStatus('success');
+                setResumeExists(true);
                 setTimeout(() => setUploadStatus('idle'), 3000);
             } else {
                 setUploadStatus('error');
@@ -63,8 +79,11 @@ export function ResumeUpload() {
                         ? 'bg-green-100 text-green-700 border border-green-200'
                         : uploadStatus === 'error'
                             ? 'bg-red-100 text-red-700 border border-red-200'
-                            : 'bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80'}
+                            : resumeExists
+                                ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                                : 'bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80'}
         `}
+                title={resumeExists ? "Resume uploaded. Click to update." : "Upload Resume"}
             >
                 {isUploading ? (
                     <Loader2 size={18} className="animate-spin" />
@@ -72,6 +91,8 @@ export function ResumeUpload() {
                     <CheckCircle size={18} />
                 ) : uploadStatus === 'error' ? (
                     <AlertCircle size={18} />
+                ) : resumeExists ? (
+                    <CheckCircle size={18} />
                 ) : (
                     <Upload size={18} />
                 )}
@@ -80,7 +101,8 @@ export function ResumeUpload() {
                     {isUploading ? 'Uploading...' :
                         uploadStatus === 'success' ? 'Resume Uploaded' :
                             uploadStatus === 'error' ? 'Upload Failed' :
-                                'Upload Resume'}
+                                resumeExists ? 'Resume Uploaded' :
+                                    'Upload Resume'}
                 </span>
             </button>
         </div>

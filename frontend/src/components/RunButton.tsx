@@ -1,5 +1,6 @@
-import { Loader2, Search, ChevronDown } from 'lucide-react';
+import { Loader2, Search, ChevronDown, Settings } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 
 interface RunButtonProps {
     onRun: (presetName?: string) => void;
@@ -87,9 +88,18 @@ export function RunButton({ onRun, isRunning }: RunButtonProps) {
                         ))}
                         {presets.length === 0 && (
                             <div className="px-4 py-2 text-xs text-on-surface-variant opacity-60 italic">
-                                No presets found. Create one in Settings.
+                                No presets found.
                             </div>
                         )}
+                        <div className="h-px bg-outline/10 my-1"></div>
+                        <Link
+                            to="/presets"
+                            onClick={() => setShowDropdown(false)}
+                            className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-variant/30 transition-colors"
+                        >
+                            <Settings size={14} />
+                            Manage Presets
+                        </Link>
                     </div>
                 </div>
             )}
