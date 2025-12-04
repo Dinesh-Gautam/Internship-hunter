@@ -3,9 +3,13 @@ import cors from 'cors';
 import 'dotenv/config';
 import { InternShalaPlugin } from './plugins/internshala.js';
 import { StorageService } from './services/storage.js';
-import { AIService } from './services/ai.js';
+import { AiMatch, AIService } from './services/ai.js';
 import { PluginManager } from './plugin-manager.js';
 import { CompanyDetails, Internship, InternshipDetails } from './interfaces/IPlugin.js';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { PDFParse as Pdf } from 'pdf-parse';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,9 +18,9 @@ app.use(cors());
 app.use(express.json());
 
 const CONFIG = {
-    // internshipListUrl: 'https://internshala.com/internships/work-from-home-backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internships/',
+    internshipListUrl: 'https://internshala.com/internships/work-from-home-backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internships/',
 
-    internshipListUrl: "https://internshala.com/internships/backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internship/",
+    // internshipListUrl: "https://internshala.com/internships/backend-development,front-end-development,full-stack-development,javascript-development,node-js-development,software-development,web-development-internship/",
     storageFile: 'internships.json'
 };
 
@@ -34,7 +38,7 @@ app.get('/api/internships', (req, res) => {
     try {
         const internships = storage.getInternships();
         const enrichedInternships = internships.filter(({ seen }) => !seen).map(internship => {
-            const company = storage.getCompanyAnalysis(internship.company);
+            const company = storage.getCompany(internship.company);
             return {
                 ...internship,
                 companyDetails: company?.details,
@@ -87,12 +91,93 @@ app.delete('/api/internships/:id', async (req, res) => {
     }
 });
 
+app.post('/api/internships/:id/retry-ai', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const internships = storage.getInternships();
+        const internship = internships.find(i => i.id === id);
 
-// Resume Upload
-import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
-import { PDFParse as Pdf } from 'pdf-parse';
+        if (!internship) {
+            return res.status(404).json({ error: 'Internship not found' });
+        }
+
+        console.log(`Retrying AI for ${internship.company}...`);
+
+        // Load Resume Text
+        let resumeText = '';
+        try {
+            const resumePath = path.resolve('uploads/resume.pdf');
+            if (fs.existsSync(resumePath)) {
+                const dataBuffer = await fs.promises.readFile(resumePath);
+                const parser = new Pdf({ data: dataBuffer });
+                const data = await parser.getText();
+                resumeText = data.text;
+            }
+        } catch (e) {
+            console.log('No resume found or failed to parse:', e);
+        }
+
+        let aiExtractAndMatchResult: AiMatch | undefined;
+        let aiCompanyAnalysisResult: string | undefined;
+
+        if (!internship.matchAnalysis) {
+            // 1. Re-run Extraction & Match
+            aiExtractAndMatchResult = await aiService.extractAndMatch(JSON.stringify(internship), internship.description, resumeText) ?? undefined;
+        }
+
+        let existingCompanyData = storage.getCompany(internship.company);
+
+        if (!existingCompanyData && internship.companyDetailPageUrl) {
+            console.log(`Company ${internship.company} not found in storage.`);
+
+            const plugin = pluginManager.getPlugin(internship.source);
+
+            if (!plugin) {
+                console.warn("Plugin not found for source: " + internship.source);
+                return;
+            }
+
+            const companyDetails = await plugin.fetchCompanyDetails(internship.companyDetailPageUrl);
+
+            existingCompanyData = {
+                details: companyDetails ?? undefined,
+            };
+        }
+
+        if (!existingCompanyData?.analysis) {
+            // 2. Re-run Company Analysis
+            const companyDetails = existingCompanyData?.details;
+
+            aiCompanyAnalysisResult = await aiService.analyzeCompany(
+                internship.company,
+                companyDetails?.location || internship.location,
+                companyDetails?.about
+            ) ?? undefined;
+        }
+
+        // 3. Update Internship
+        const internshipToSave: Internship = {
+            ...internship,
+            ...aiExtractAndMatchResult?.details,
+            matchAnalysis: aiExtractAndMatchResult?.match,
+        };
+
+
+        await storage.saveCompany(internship.company, {
+            details: existingCompanyData?.details,
+            analysis: aiCompanyAnalysisResult
+        });
+
+        await storage.saveInternship(internshipToSave);
+
+        // 4. Return Enriched Response
+        res.json({ success: true, internship: internshipToSave });
+
+    } catch (error: any) {
+        console.error('Retry AI failed:', error);
+        res.status(500).json({ error: 'Failed to retry AI analysis' });
+    }
+});
 
 // Ensure uploads directory exists
 const uploadsDir = path.resolve('uploads');
@@ -113,7 +198,6 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
         }
 
         // Rename to resume.pdf (or keep original name and store path)
-        // For simplicity, we'll overwrite 'resume.pdf' so we always have one active resume
         const targetPath = path.join('uploads', 'resume.pdf');
         await fs.promises.rename(req.file.path, targetPath);
 
@@ -188,11 +272,11 @@ app.get('/api/run', async (req, res) => {
 
             const aiResult = await aiService.extractAndMatch(rawDetails.meta, rawDetails.description, resumeText);
 
-            const extractedDetails = aiResult?.details || {};
+            const extractedDetails = aiResult?.details || { description: rawDetails.description };
             const matchAnalysis = aiResult?.match;
 
             // 3. Company Analysis (Grounding)
-            let company = storage.getCompanyAnalysis(listing.company);
+            let company = storage.getCompany(listing.company);
 
             if (company) {
                 console.log(`Using cached company analysis for ${listing.company}`);
@@ -215,9 +299,9 @@ app.get('/api/run', async (req, res) => {
 
                 company = {
                     details: companyDetails,
-                    analysis: companyAnalysis
+                    analysis: companyAnalysis || undefined
                 }
-                await storage.saveCompanyAnalysis(listing.company, company);
+                await storage.saveCompany(listing.company, company);
             }
 
             // 4. Merge & Save

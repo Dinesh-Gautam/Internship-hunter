@@ -1,8 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { CompanyDetails } from "../interfaces/IPlugin.js";
+import { CompanyDetails, Internship } from "../interfaces/IPlugin.js";
 
 const AiMatchSchema = z.object({
+    score: z.number().describe("Score between 0 and 100"),
+    verdict: z.enum(["Good Match", "Average Match", "Poor Match", "No Resume"]).describe("Verdict of the match"),
+    summary: z.string().describe("One sentence short Summary of the match"),
+    pros: z.array(z.string()).describe("Very short points, Pros of the match"),
+    cons: z.array(z.string()).describe("Very short points, Cons of the match"),
+})
+
+const AiExtractAndMatchSchema = z.object({
     details: z.object({
         description: z.string().describe("descript of the internship in proper markdown"),
         stipend: z.string(),
@@ -15,16 +23,10 @@ const AiMatchSchema = z.object({
         applyBy: z.string(),
         postedOn: z.string().describe("Date of posting the internship"),
     }),
-    match: z.object({
-        score: z.number(),
-        verdict: z.enum(["Good Match", "Average Match", "Poor Match", "No Resume"]),
-        summary: z.string(),
-        pros: z.array(z.string()),
-        cons: z.array(z.string()),
-    }).optional(),
+    match: AiMatchSchema,
 });
 
-export type AiMatch = z.infer<typeof AiMatchSchema>;
+export type AiMatch = z.infer<typeof AiExtractAndMatchSchema>;
 
 export class AIService {
     private client: GoogleGenAI | null;
@@ -43,9 +45,33 @@ export class AIService {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async analyzeCompany(companyName: string, location?: string, about?: string): Promise<string> {
+    private async retryOperation<T>(operation: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+        try {
+            return await operation();
+        } catch (error: any) {
+            if (retries <= 0) throw error;
+
+            const isRetryable =
+                error.status === 503 ||
+                error.code === 503 ||
+                (error.message && error.message.includes('503')) ||
+                error.status === 429 ||
+                error.code === 429 ||
+                (error.message && error.message.includes('429'));
+
+            if (isRetryable) {
+                console.warn(`AI Service Error (${error.message}). Retrying in ${delay}ms... (${retries} attempts left)`);
+                await this.sleep(delay);
+                return this.retryOperation(operation, retries - 1, delay * 2);
+            }
+
+            throw error;
+        }
+    }
+
+    async analyzeCompany(companyName: string, location?: string, about?: string): Promise<string | null> {
         if (!this.client) {
-            return "AI analysis disabled (no API key).";
+            return null;
         }
 
         try {
@@ -78,32 +104,30 @@ export class AIService {
         **Cons:** [List 1-2]
       `;
 
-            const response = await this.client.models.generateContent({
-                model: this.modelName,
-                contents: [{
-                    role: 'user',
-                    parts: [{ text: prompt }]
-                }],
-                config: {
-                    tools: [{ googleSearch: {} }]
+            return await this.retryOperation(async () => {
+                const response = await this.client!.models.generateContent({
+                    model: this.modelName,
+                    contents: [{
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }],
+                    config: {
+                        tools: [{ googleSearch: {} }]
+                    }
+                });
+
+                if (response && response.candidates && response.candidates.length > 0) {
+                    const candidate = response.candidates[0];
+                    if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                        return candidate.content.parts.map(p => p.text).join(' ');
+                    }
                 }
+                return "No analysis generated.";
             });
 
-            if (response && response.candidates && response.candidates.length > 0) {
-                const candidate = response.candidates[0];
-                if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-                    return candidate.content.parts.map(p => p.text).join(' ');
-                }
-            }
-
-            return "No analysis generated.";
         } catch (error: any) {
-            if (error.status === 429 || error.code === 429 || (error.message && error.message.includes('429'))) {
-                console.warn(`Rate limit hit for ${companyName}. Skipping analysis.`);
-                return "Analysis skipped (Rate Limit).";
-            }
             console.error(`AI Error for ${companyName}:`, error.message);
-            return `AI analysis failed: ${error.message}`;
+            return null
         }
     }
 
@@ -146,29 +170,83 @@ export class AIService {
         - pros/cons: Short lists with short points.
       `;
 
-            const response = await this.client.models.generateContent({
-                model: "gemini-flash-lite-latest",
-                contents: [{
-                    role: 'user',
-                    parts: [{ text: prompt }]
-                }],
-                config: {
-                    responseMimeType: "application/json",
-                    responseJsonSchema: z.toJSONSchema(AiMatchSchema)
+            return await this.retryOperation(async () => {
+                const response = await this.client!.models.generateContent({
+                    model: "gemini-flash-lite-latest",
+                    contents: [{
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }],
+                    config: {
+                        responseMimeType: "application/json",
+                        responseJsonSchema: z.toJSONSchema(AiExtractAndMatchSchema)
+                    }
+                });
+
+                if (response && response.text) {
+                    return JSON.parse(response.text);
+                } else if (response && response.candidates && response.candidates.length > 0) {
+                    const candidate = response.candidates[0];
+                    if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                        const text = candidate.content.parts.map(p => p.text).join(' ');
+                        return JSON.parse(text);
+                    }
                 }
+                return null;
             });
 
-            if (response && response.text) {
-                return JSON.parse(response.text);
-            } else if (response && response.candidates && response.candidates.length > 0) {
-                const candidate = response.candidates[0];
-                if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
-                    const text = candidate.content.parts.map(p => p.text).join(' ');
-                    return JSON.parse(text);
-                }
-            }
-
+        } catch (error: any) {
+            console.error(`AI Extraction/Match Error:`, error.message);
             return null;
+        }
+    }
+
+    async matchInternshipWithResume(internship: Internship, resumeText: string): Promise<AiMatch['match'] | null> {
+        if (!this.client) {
+            return null
+        }
+
+        try {
+            console.log("Matching details...");
+
+            // Rate limit handling
+            await this.sleep(2000);
+
+            const prompt = `
+        You are an expert career coach and your task is to match the internship with the candidate's resume.
+        
+        **Input Text (Internship Page):**
+        ${Object.entries(internship).map(([key, value]) => `${key}: ${value}`).join("\n")}
+
+        **Candidate Resume:**
+        ${resumeText ? resumeText.substring(0, 10000) : "No resume provided."}
+      `;
+
+            return await this.retryOperation(async () => {
+                const response = await this.client!.models.generateContent({
+                    model: "gemini-flash-lite-latest",
+                    contents: [{
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }],
+                    config: {
+                        responseMimeType: "application/json",
+                        responseJsonSchema: z.toJSONSchema(AiMatchSchema)
+                    }
+                });
+
+                if (response && response.text) {
+                    return JSON.parse(response.text);
+                } else if (response && response.candidates && response.candidates.length > 0) {
+                    const candidate = response.candidates[0];
+                    if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+                        const text = candidate.content.parts.map(p => p.text).join(' ');
+                        return JSON.parse(text);
+                    }
+                }
+                return null;
+            });
+
         } catch (error: any) {
             console.error(`AI Extraction/Match Error:`, error.message);
             return null;

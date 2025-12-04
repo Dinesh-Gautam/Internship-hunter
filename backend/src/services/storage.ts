@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { Compnay, Internship } from '../interfaces/IPlugin.js';
+import { CompanyDetails, Compnay, Internship } from '../interfaces/IPlugin.js';
 
 
 export class StorageService {
@@ -74,12 +74,12 @@ export class StorageService {
         return this.blacklist.includes(company);
     }
 
-    getCompanyAnalysis(company: string) {
+    getCompany(company: string): Compnay | undefined {
         if (!this.loaded) throw new Error('Storage not loaded. Call load() first.');
-        return this.companies[company];
+        return this.companies[company] ?? undefined;
     }
 
-    async saveCompanyAnalysis(company: string, data: Compnay) {
+    async saveCompany(company: string, data: Compnay) {
         if (!this.loaded) await this.load();
         this.companies[company] = { ...data, savedOn: new Date() };
         await fs.writeFile(this.companiesPath, JSON.stringify(this.companies, null, 2), 'utf-8');

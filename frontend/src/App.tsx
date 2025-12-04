@@ -1,28 +1,15 @@
-import { useState, useEffect } from 'react';
 import { Briefcase, Sparkles } from 'lucide-react';
-import { InternshipList } from './components/InternshipList';
-import { RunButton } from './components/RunButton';
-import { ResumeUpload } from './components/ResumeUpload';
 import { type Internship } from './components/InternshipCard';
+import { InternshipList } from './components/InternshipList';
+import { ResumeUpload } from './components/ResumeUpload';
+import { RunButton } from './components/RunButton';
+import { useGlobalState } from './store/global';
+import { useState } from 'react';
 
 function App() {
-  const [internships, setInternships] = useState<Internship[]>([]);
-  const [statusMessage, setStatusMessage] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-
-  const fetchInternships = async () => {
-    try {
-      const res = await fetch('http://localhost:3000/api/internships');
-      const data = await res.json();
-      setInternships(data);
-    } catch (error) {
-      console.error('Failed to fetch internships:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchInternships();
-  }, []);
+  const [statusMessage, setStatusMessage] = useState('');
+  const { internships, fetchInternships, setInternships } = useGlobalState();
 
   const handleRun = async () => {
     setIsRunning(true);

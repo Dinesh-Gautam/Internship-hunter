@@ -31,14 +31,19 @@ export interface CompanyDetails {
 
 export interface Compnay extends savedMetadata {
     details?: CompanyDetails;
-    analysis: string;
+    analysis?: string;
 }
 
 export interface Internship extends InternshipListing, savedMetadata {
-    matchAnalysis: AiMatch['match'];
+    matchAnalysis?: AiMatch['match'];
     seen: boolean;
-    description?: string;
+    description: string;
     companyDetailPageUrl?: string;
+    skills?: string[];
+    ppo?: string | null;
+    postedOn?: string;
+    applyBy?: string;
+    locationType?: "Online" | "Hybrid" | "Onsite";
 }
 
 export interface savedMetadata {

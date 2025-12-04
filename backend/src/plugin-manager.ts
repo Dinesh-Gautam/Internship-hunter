@@ -10,6 +10,10 @@ export class PluginManager {
         console.log(`Registered plugin: ${plugin.name}`);
     }
 
+    getPlugin(source: string): IPlugin | undefined {
+        return this.plugins.find(p => p.name === source);
+    }
+
     async fetchAllListings(): Promise<InternshipListing[]> {
         console.log("Fetching listings from all plugins...");
         const allListings: InternshipListing[] = [];

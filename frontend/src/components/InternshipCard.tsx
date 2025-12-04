@@ -5,8 +5,9 @@ import {
     MapPin, DollarSign, Clock, Eye, EyeOff, Trash2, Ban, ExternalLink,
     Sparkles, FileText, CheckCircle, AlertCircle, Building2,
     Users, ChevronDown, ChevronUp,
-    Calendar
+    Calendar, RefreshCw
 } from 'lucide-react';
+import { useGlobalState } from '../store/global';
 
 
 export interface Internship {
@@ -51,8 +52,11 @@ interface InternshipCardProps {
 
 export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
     const [loading, setLoading] = useState(false);
+    const [retrying, setRetrying] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [showAnalysis, setShowAnalysis] = useState(false);
+
+    const { setInternships } = useGlobalState();
 
     const handleBlacklist = async () => {
         if (!confirm(`Are you sure you want to blacklist ${internship.company}?`)) return;
@@ -74,7 +78,9 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
     const handleToggleSeen = async () => {
         try {
             await fetch(`http://localhost:3000/api/internships/${internship.id}/seen`, { method: 'POST' });
-            onUpdate();
+            setInternships(prev => prev.map(i => i.id === internship.id ? { ...i, seen: !i.seen } : i));
+            setExpanded(false);
+            setShowAnalysis(false);
         } catch (error) {
             console.error('Failed to toggle seen:', error);
         }
@@ -90,6 +96,23 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
         }
     };
 
+    const handleRetryAi = async () => {
+        setRetrying(true);
+        try {
+            const res = await fetch(`http://localhost:3000/api/internships/${internship.id}/retry-ai`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                onUpdate();
+            }
+        } catch (error) {
+            console.error('Retry failed', error);
+        } finally {
+            setRetrying(false);
+        }
+    };
+
     // Helper to get company website
     const getCompanyWebsite = () => {
         if (internship.companyDetails?.websiteLink) return internship.companyDetails.websiteLink;
@@ -97,6 +120,10 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
 
     const companyUrl = getCompanyWebsite();
     const matchScore = internship.matchAnalysis?.score || 0;
+
+    const hasAiError = !internship.matchAnalysis || !internship.companyAnalysis ||
+        internship.companyAnalysis?.includes('AI analysis failed') ||
+        internship.companyAnalysis?.includes('Analysis skipped');
 
     // Determine color based on match score
     const getScoreColor = (score: number) => {
@@ -124,6 +151,16 @@ export function InternshipCard({ internship, onUpdate }: InternshipCardProps) {
                                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getScoreColor(matchScore)}`}>
                                     {matchScore}% Match
                                 </span>
+                            )}
+                            {hasAiError && (
+                                <button
+                                    onClick={handleRetryAi}
+                                    disabled={retrying}
+                                    className="flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full border border-error/30 bg-error/10 text-error hover:bg-error/20 transition-colors"
+                                >
+                                    <RefreshCw size={12} className={retrying ? 'animate-spin' : ''} />
+                                    {retrying ? 'Retrying...' : 'Retry AI'}
+                                </button>
                             )}
                         </div>
 
