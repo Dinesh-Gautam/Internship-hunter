@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { InternShalaPlugin } from './plugins/internshala.js';
+import { NaukriPlugin } from './plugins/naukri.js';
 import { StorageService } from './services/storage.js';
 import { AiMatch, AIService } from './services/ai.js';
 import { PluginManager } from './plugin-manager.js';
@@ -32,6 +33,7 @@ const pluginManager = new PluginManager();
 (async () => {
     await storage.load();
     pluginManager.registerPlugin(new InternShalaPlugin(CONFIG));
+    pluginManager.registerPlugin(new NaukriPlugin());
 })();
 
 app.get('/api/internships', (req, res) => {

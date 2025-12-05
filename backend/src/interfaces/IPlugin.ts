@@ -25,8 +25,8 @@ export interface CompanyDetails {
     size?: string,
     websiteLink?: string,
     opportunitiesPosted?: string;
-    candidatesHired: string;
-    hiringSince: string,
+    candidatesHired?: string;
+    hiringSince?: string,
 }
 
 export interface Compnay extends savedMetadata {
