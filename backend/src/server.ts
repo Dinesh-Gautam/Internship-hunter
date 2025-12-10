@@ -364,6 +364,56 @@ app.post('/api/companies/:name/blacklist', async (req, res) => {
     }
 });
 
+app.post('/api/extension/analyze', async (req, res) => {
+    const { name, location, about, website } = req.body;
+
+    console.log(`Extension requested analysis for: ${name}`);
+
+    if (!name) {
+        return res.status(400).json({ error: 'Company name is required' });
+    }
+
+    try {
+        // 1. Check Cache
+        const existing = storage.getCompany(name);
+        if (existing?.analysis) {
+            console.log(`Cache hit for ${name}`);
+            return res.json({ success: true, analysis: existing.analysis, cached: true });
+        }
+
+        // 2. Analyze
+        // We pass the about text scraped from the page to help the AI
+        const analysis = await aiService.analyzeCompany(name, location, about);
+
+        // 3. Save
+        const details: CompanyDetails = {
+            name,
+            location: location || existing?.details?.location || '',
+            about: about || existing?.details?.about || '',
+            websiteLink: website || existing?.details?.websiteLink || '',
+            // Preserve existing fields if any
+            candidatesHired: existing?.details?.candidatesHired || '',
+            hiringSince: existing?.details?.hiringSince || '',
+            opportunitiesPosted: existing?.details?.opportunitiesPosted || '',
+            industry: existing?.details?.industry || '',
+            size: existing?.details?.size || ''
+        };
+
+        if (analysis) {
+            await storage.saveCompany(name, {
+                details,
+                analysis
+            });
+        }
+
+        res.json({ success: true, analysis: analysis || "Could not generate analysis." });
+
+    } catch (error: any) {
+        console.error("Extension Analysis Error:", error);
+        res.status(500).json({ error: error.message || 'Failed to analyze company' });
+    }
+});
+
 
 app.get('/api/run', async (req, res) => {
     console.log('Starting manual run (SSE)...');
