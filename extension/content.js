@@ -72,8 +72,7 @@ function scrapeCompanyData() {
     if (!name) name = getText('.org-top-card-summary__title');
 
     // 2. Location
-    let location = getText('.org-top-card-summary__headquarters');
-    if (!location) location = getText('.org-top-card-summary-info-list__info-item:nth-child(1)');
+    let location =  getText('.org-top-card-summary-info-list__info-item:nth-child(1)');
 
     // 3. About
     // This is hard because "About" is often in a different tab or further down.

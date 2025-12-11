@@ -4,6 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  
+    "start": "concurrently \"pnpm run start:frontend\" \"pnpm run start:backend\"",
+    "start:frontend": "cd frontend && pnpm run dev",
+    "start:backend": "cd backend && pnpm run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
