@@ -34,6 +34,59 @@ const AiExtractAndMatchSchema = z.object({
 
 export type AiMatch = z.infer<typeof AiExtractAndMatchSchema>;
 
+export const ResumeSchema = z.object({
+  fullName: z.string(),
+  contact: z.object({
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    linkedin: z.string().describe("URL to the candidate's LinkedIn profile"),
+    github: z.string().describe("URL to the candidate's GitHub profile"),
+    portfolio: z.string().optional(),
+    location: z.string().optional(),
+  }),
+  summary: z.string().describe("A professional summary tailored to the job"),
+  education: z.array(z.object({
+    institution: z.string(),
+    degree: z.string(),
+    location: z.string().optional(),
+    date: z.string(),
+    details: z.array(z.string()).optional()
+  })),
+  experience: z.array(z.object({
+    company: z.string(),
+    role: z.string(),
+    location: z.string().optional(),
+    date: z.string(),
+    details: z.array(z.string()).describe("Action-oriented bullet points tailored to the job")
+  })),
+  projects: z.array(z.object({
+    name: z.string(),
+    link: z.string().describe("URL to the project or PR"),
+    technologies: z.string().optional(),
+    date: z.string().optional(),
+    details: z.array(z.string())
+  })).optional(),
+  openSource: z.array(z.object({
+    name: z.string(),
+    role: z.string().optional().describe("Contributor, Maintainer, etc."),
+    link: z.string(),
+    details: z.array(z.string())
+  })).optional(),
+  skills: z.object({
+    languages: z.array(z.string()).optional(),
+    frameworks: z.array(z.string()).optional(),
+    tools: z.array(z.string()).optional(),
+    softSkills: z.array(z.string()).optional()
+  }),
+  certifications: z.array(z.object({
+    name: z.string(),
+    issuer: z.string(),
+    date: z.string().optional()
+  })).optional()
+});
+
+export type ResumeData = z.infer<typeof ResumeSchema>;
+
 export class AIService {
   private client: GoogleGenAI | null;
   private modelName = "gemini-flash-latest";
@@ -350,6 +403,89 @@ export class AIService {
     } catch (error: any) {
       console.error(`AI Extraction/Match Error:`, error.message);
       return null;
+    }
+  }
+
+  async tailorResume(
+    internshipDescription: string,
+    resumeText: string
+  ): Promise<ResumeData | null> {
+    if (!this.client) {
+      return null;
+    }
+
+    try {
+      console.log("Tailoring resume (structured)...");
+      // Rate limit handling
+      await this.sleep(4000);
+
+      const prompt = `
+        You are an expert ATS (Applicant Tracking System) optimizer and professional resume writer. 
+        Your goal is to rewrite the candidate's resume to match the provided internship description, ensuring it passes ATS filters while remaining truthful to the candidate's actual experience.
+
+        **Internship Description:**
+        ${internshipDescription.substring(0, 5000)}
+
+        **Candidate Resume:**
+        ${resumeText.substring(0, 10000)}
+
+        **Strict Guidelines:**
+        1. **Professional Summary**: Write a powerful "Professional Summary" (NOT an Objective). 
+           - **CRITICAL**: Do NOT mention the company name (e.g., "seeking internship at [Company]") or the specific role title in the summary/objective.
+           - Focus entirely on the candidate's *existing* skills, achievements, and value proposition that make them ready for this domain.
+        2. **Experience & Projects**: 
+           - Rewrite bullet points to use the *vocabulary* and *keywords* found in the Internship Description.
+           - Use the "STAR" method (Situation, Task, Action, Result) where possible.
+           - **Do NOT hallucinate**: Do not invent experiences or skills the candidate does not have. Only emphasize/rephrase what is already there.
+        3. **Keywords**: Bold (**text**) the most critical keywords (e.g., **React**, **AWS**) that appear in the job description to highlight the match.
+        4. **Open Source**: If the candidate has Open Source contributions, extract them into a separate 'openSource' array.
+        5. **Links**: You MUST preserve all links to projects, pull requests, or portfolios found in the original resume. Include them in the 'link' field
+        6. Remove things that are not relevant to the internship description. Make experience / project descriptions compact 
+
+        **Output:**
+        Return strictly the structured JSON data.
+      `;
+
+      return await this.retryOperation(async () => {
+        if (!this.client) throw new Error("Client initialization failed");
+
+        const response = await this.client.models.generateContent({
+          model: this.modelName,
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+          config: {
+            responseMimeType: "application/json",
+            responseJsonSchema: z.toJSONSchema(ResumeSchema),
+          },
+        });
+
+        if (response && response.text) {
+          return JSON.parse(response.text);
+        } else if (
+          response &&
+          response.candidates &&
+          response.candidates.length > 0
+        ) {
+          const candidate = response.candidates[0];
+          if (
+            candidate.content &&
+            candidate.content.parts &&
+            candidate.content.parts.length > 0
+          ) {
+            const text = candidate.content.parts.map((p) => p.text).join(" ");
+            return JSON.parse(text);
+          }
+        }
+        return null;
+      });
+
+    } catch (error: any) {
+      console.error("Error tailoring resume:", error);
+      throw error;
     }
   }
 }

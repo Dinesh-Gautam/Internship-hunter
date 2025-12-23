@@ -11,6 +11,9 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { PDFParse as Pdf } from 'pdf-parse';
+import puppeteer from 'puppeteer';
+import { exec } from 'child_process';
+import { generateResumeHtml } from './utils/resumeTemplate.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -408,9 +411,122 @@ app.post('/api/extension/analyze', async (req, res) => {
 
         res.json({ success: true, analysis: analysis || "Could not generate analysis." });
 
+        res.json({ success: true, analysis: analysis || "Could not generate analysis." });
+
     } catch (error: any) {
         console.error("Extension Analysis Error:", error);
         res.status(500).json({ error: error.message || 'Failed to analyze company' });
+    }
+});
+
+app.post('/api/open-file', (req, res) => {
+    const { path: filePath } = req.body;
+    if (!filePath) return res.status(400).json({ error: 'Path is required' });
+
+    // Sanitize path slightly to ensure it's absolute or allows running
+    // For Windows 'start "" "path"'
+    const command = `start "" "${filePath}"`;
+    exec(command, (error) => {
+        if (error) {
+            console.error("Error opening file:", error);
+            return res.status(500).json({ error: 'Failed to open file' });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.post('/api/show-in-folder', (req, res) => {
+    const { path: filePath } = req.body;
+    if (!filePath) return res.status(400).json({ error: 'Path is required' });
+
+    // Windows explorer /select
+    const command = `explorer.exe /select,"${filePath}"`;
+    exec(command, (error) => {
+        if (error) {
+            console.error("Error opening folder:", error);
+            return res.status(500).json({ error: 'Failed to open folder' });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.post('/api/internships/:id/tailor', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const internships = storage.getInternships();
+        const internship = internships.find(i => i.id === id);
+
+        if (!internship) {
+            return res.status(404).json({ error: 'Internship not found' });
+        }
+
+        console.log(`Tailoring resume for ${internship.company}...`);
+
+        // 1. Get Resume Text
+        let resumeText = '';
+        const resumePath = path.resolve('uploads/resume.pdf');
+        if (fs.existsSync(resumePath)) {
+            const dataBuffer = await fs.promises.readFile(resumePath);
+            const parser = new Pdf({ data: dataBuffer });
+            const data = await parser.getText();
+            resumeText = data.text;
+        } else {
+            return res.status(400).json({ error: 'No resume found (uploads/resume.pdf)' });
+        }
+
+        // 2. Describe Internship
+        // Use description + about + analysis to give context
+        const companyData = storage.getCompany(internship.company);
+        const description = `
+            Title: ${internship.title}
+            Company: ${internship.company}
+            Skills: ${internship.skills?.join(', ') || ''}
+            Description: ${internship.description || ''}
+            About Company: ${companyData?.details?.about || ''}
+        `;
+
+        // 3. Generate Structured Resume Data & HTML
+        const resumeData = await aiService.tailorResume(description, resumeText);
+
+        if (!resumeData) {
+            return res.status(500).json({ error: 'AI failed to generate resume data' });
+        }
+
+        const htmlResume = generateResumeHtml(resumeData);
+
+        // 4. Generate PDF
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        await page.setContent(htmlResume, { waitUntil: 'networkidle0' });
+        const pdfBuffer = await page.pdf({
+            format: 'letter',
+            printBackground: true,
+            margin: { top: '0cm', right: '0.1cm', bottom: '0.1cm', left: '0.1cm' }
+        });
+        await browser.close();
+
+        // 5. Save PDF
+        const outputDir = path.resolve('tailored_resumes');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir);
+        }
+
+        // Sanitize filename
+        const safeCompany = internship.company.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const safeRole = internship.title.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const date = new Date().toISOString().split('T')[0];
+        const filename = `${safeCompany}_${safeRole}_${date}.pdf`;
+        const outputPath = path.join(outputDir, filename);
+
+        await fs.promises.writeFile(outputPath, Buffer.from(pdfBuffer));
+
+        console.log(`Tailored resume saved to: ${outputPath}`);
+
+        res.json({ success: true, filePath: outputPath });
+
+    } catch (error: any) {
+        console.error('Tailor resume failed:', error);
+        res.status(500).json({ error: 'Failed to tailor resume' });
     }
 });
 

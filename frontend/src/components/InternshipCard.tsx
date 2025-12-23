@@ -276,10 +276,131 @@ export function InternshipCard({ internship, onUpdate, isSelected, onSelect }: I
                         <div className="prose prose-sm max-w-none text-on-surface-variant prose-headings:text-on-surface prose-a:text-primary prose-strong:text-on-surface">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{internship.description}</ReactMarkdown>
                         </div>
+
+                        {/* Tailor Resume Section */}
+                        <div className="mt-8 pt-6 border-t border-outline/10">
+                            <TailorResumeSection internshipId={internship.id} />
+                        </div>
                     </div>
                 )}
 
             </div>
+        </div>
+    );
+}
+
+function TailorResumeSection({ internshipId }: { internshipId: string }) {
+    const [tailoring, setTailoring] = useState(false);
+    const [tailoredFile, setTailoredFile] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleTailor = async () => {
+        setTailoring(true);
+        setError(null);
+        try {
+            const res = await fetch(`http://localhost:3000/api/internships/${internshipId}/tailor`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                setTailoredFile(data.filePath);
+            } else {
+                setError(data.error || 'Failed to tailor resume');
+            }
+        } catch (err) {
+            setError('Network error or server failed');
+            console.error(err);
+        } finally {
+            setTailoring(false);
+        }
+    };
+
+    const handleOpenFile = async () => {
+        if (!tailoredFile) return;
+        try {
+            await fetch('http://localhost:3000/api/open-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: tailoredFile })
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleShowInFolder = async () => {
+        if (!tailoredFile) return;
+        try {
+            await fetch('http://localhost:3000/api/show-in-folder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: tailoredFile })
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    return (
+        <div className="bg-surface-variant/20 rounded-xl p-4 border border-outline/10">
+            <h4 className="font-semibold text-on-surface mb-3 flex items-center gap-2">
+                <Sparkles size={18} className="text-secondary" /> Resume Tailoring
+            </h4>
+
+            {!tailoredFile ? (
+                <div className="flex items-center gap-3">
+                    <p className="text-sm text-on-surface-variant flex-1">
+                        Generate a PDF resume tailored specifically for this internship using AI.
+                    </p>
+                    <button
+                        onClick={handleTailor}
+                        disabled={tailoring}
+                        className="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-sm font-medium hover:bg-secondary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {tailoring ? (
+                            <>
+                                <RefreshCw size={16} className="animate-spin" /> Tailoring...
+                            </>
+                        ) : (
+                            <>
+                                <FileText size={16} /> Tailor Resume
+                            </>
+                        )}
+                    </button>
+                </div>
+            ) : (
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100 text-sm font-medium">
+                        <Sparkles size={14} /> Resume Generated & Saved!
+                    </div>
+                    <div className="flex gap-2 ml-auto">
+                        <button
+                            onClick={handleOpenFile}
+                            className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors flex items-center gap-2"
+                        >
+                            <ExternalLink size={14} /> Open PDF
+                        </button>
+                        <button
+                            onClick={handleShowInFolder}
+                            className="px-3 py-1.5 bg-surface-variant text-on-surface-variant rounded-lg text-sm font-medium hover:bg-surface-variant/80 transition-colors flex items-center gap-2"
+                        >
+                            <FileText size={14} /> Show in Folder
+                        </button>
+                        <button
+                            onClick={() => setTailoredFile(null)}
+                            className="px-3 py-1.5 text-on-surface-variant/50 hover:text-on-surface-variant hover:bg-surface-variant/50 rounded-lg text-sm transition-colors"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {error && (
+                <div className="mt-3 text-red-600 text-sm bg-red-50 p-2 rounded border border-red-100">
+                    Error: {error}
+                </div>
+            )}
         </div>
     );
 }
