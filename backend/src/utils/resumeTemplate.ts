@@ -1,43 +1,98 @@
 import { ResumeData } from "../services/ai.js";
 
-export function generateResumeHtml(data: ResumeData): string {
-    const { fullName, contact, summary, education, experience, projects, skills, certifications, openSource } = data;
+export interface ResumeFont {
+  id: string;
+  label: string;
+  bodyFamily: string;
+  headingFamily: string;
+  googleFontUrl: string;
+}
 
-    // Helper to parse simple markdown bold and links to HTML
-    const formatText = (text: string) => {
-        if (!text) return "";
-        let formatted = text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // Regex for [text](url) -> <a href="url">text</a>
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-        return formatted;
-    };
+export const RESUME_FONTS: ResumeFont[] = [
+  {
+    id: 'classic',
+    label: 'Classic (Garamond & Lato)',
+    bodyFamily: "'Cormorant Garamond', serif",
+    headingFamily: "'Lato', sans-serif",
+    googleFontUrl: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;700&display=swap"
+  },
+  {
+    id: 'modern',
+    label: 'Modern (Roboto)',
+    bodyFamily: "'Roboto', sans-serif",
+    headingFamily: "'Roboto', sans-serif",
+    googleFontUrl: "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+  },
+  {
+    id: 'professional',
+    label: 'Professional (Open Sans)',
+    bodyFamily: "'Open Sans', sans-serif",
+    headingFamily: "'Open Sans', sans-serif",
+    googleFontUrl: "https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap"
+  },
+  {
+    id: 'elegant',
+    label: 'Elegant (Merriweather)',
+    bodyFamily: "'Merriweather', serif",
+    headingFamily: "'Merriweather', serif",
+    googleFontUrl: "https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&display=swap"
+  },
+  {
+    id: 'clean',
+    label: 'Clean (Lato)',
+    bodyFamily: "'Lato', sans-serif",
+    headingFamily: "'Lato', sans-serif",
+    googleFontUrl: "https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap"
+  },
+  {
+    id: 'minimal',
+    label: 'Minimal (Inter)',
+    bodyFamily: "'Inter', sans-serif",
+    headingFamily: "'Inter', sans-serif",
+    googleFontUrl: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+  }
+];
 
-    // Helpers to safely render lists
-    const renderList = (items?: string[]) => {
-        if (!items || items.length === 0) return "";
-        return `<ul>${items.map(item => `<li>${formatText(item)}</li>`).join("")}</ul>`;
-    };
+export function generateResumeHtml(data: ResumeData, fontId: string = 'classic'): string {
+  const { fullName, contact, summary, education, experience, projects, skills, certifications, openSource } = data;
 
-    const renderSection = (title: string, content: string) => {
-        if (!content) return "";
-        return `
+  const selectedFont = RESUME_FONTS.find(f => f.id === fontId) || RESUME_FONTS[0];
+
+  // Helper to parse simple markdown bold and links to HTML
+  const formatText = (text: string) => {
+    if (!text) return "";
+    let formatted = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Regex for [text](url) -> <a href="url">text</a>
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    return formatted;
+  };
+
+  // Helpers to safely render lists
+  const renderList = (items?: string[]) => {
+    if (!items || items.length === 0) return "";
+    return `<ul>${items.map(item => `<li>${formatText(item)}</li>`).join("")}</ul>`;
+  };
+
+  const renderSection = (title: string, content: string) => {
+    if (!content) return "";
+    return `
       <div class="section">
         <h2>${title}</h2>
         ${content}
       </div>
     `;
-    };
+  };
 
-    const contactParts = [
-        contact.email && `<a href="mailto:${contact.email}">${contact.email}</a>`,
-        contact.phone,
-        contact.linkedin && `<a href="${contact.linkedin}">LinkedIn</a>`,
-        contact.github && `<a href="${contact.github}">GitHub</a>`,
-        contact.portfolio && `<a href="${contact.portfolio}">Portfolio</a>`,
-    ].filter(Boolean).join(" | ");
+  const contactParts = [
+    contact.email && `<a href="mailto:${contact.email}">${contact.email}</a>`,
+    contact.phone,
+    contact.linkedin && `<a href="${contact.linkedin}">LinkedIn</a>`,
+    contact.github && `<a href="${contact.github}">GitHub</a>`,
+    contact.portfolio && `<a href="${contact.portfolio}">Portfolio</a>`,
+  ].filter(Boolean).join(" | ");
 
-    const educationHtml = education.map(edu => `
+  const educationHtml = education.map(edu => `
     <div class="item">
       <div class="item-header">
         <span>${edu.institution}</span>
@@ -51,7 +106,7 @@ export function generateResumeHtml(data: ResumeData): string {
     </div>
   `).join("");
 
-    const experienceHtml = experience.map(exp => `
+  const experienceHtml = experience.map(exp => `
     <div class="item">
       <div class="item-header">
         <span>${exp.company}</span>
@@ -65,7 +120,7 @@ export function generateResumeHtml(data: ResumeData): string {
     </div>
   `).join("");
 
-    const projectsHtml = projects ? projects.map(proj => `
+  const projectsHtml = projects ? projects.map(proj => `
     <div class="item">
       <div class="item-header">
         <span>${proj.name} ${proj.link ? `<a href="${proj.link}" style="font-weight:normal; font-size: 0.9em;">[Link]</a>` : ""}</span>
@@ -76,7 +131,7 @@ export function generateResumeHtml(data: ResumeData): string {
     </div>
   `).join("") : "";
 
-    const openSourceHtml = openSource ? openSource.map(os => `
+  const openSourceHtml = openSource ? openSource.map(os => `
     <div class="item">
       <div class="item-header">
         <span>${os.name} ${os.link ? `<a href="${os.link}" style="font-weight:normal; font-size: 0.9em;">[Link]</a>` : ""}</span>
@@ -86,7 +141,7 @@ export function generateResumeHtml(data: ResumeData): string {
     </div>
   `).join("") : "";
 
-    const skillsHtml = `
+  const skillsHtml = `
     <div class="skills-grid">
       ${skills.languages && skills.languages.length ? `<div><strong>Languages:</strong> ${formatText(skills.languages.join(", "))}</div>` : ""}
       ${skills.frameworks && skills.frameworks.length ? `<div><strong>Frameworks:</strong> ${formatText(skills.frameworks.join(", "))}</div>` : ""}
@@ -95,43 +150,43 @@ export function generateResumeHtml(data: ResumeData): string {
     </div>
   `;
 
-    const certsHtml = certifications ? certifications.map(cert => `
+  const certsHtml = certifications ? certifications.map(cert => `
     <div class="item-header">
        <span>${cert.name} - ${cert.issuer}</span>
        <span>${cert.date || ""}</span>
     </div>
   `).join("") : "";
 
-    return `
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${fullName} - Resume</title>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+      <link href="${selectedFont.googleFontUrl}" rel="stylesheet">
       <style>
         body {
-          font-family: 'Cormorant Garamond', serif;
+          font-family: ${selectedFont.bodyFamily};
           line-height: 1.25; 
           color: #000; /* Darker black */
           max-width: 800px;
           margin: 0 auto;
           padding: 20px;
           font-size: 10.5pt;
-          font-weight: 500;
+          font-weight: 400;
         }
         
         a { color: #000; text-decoration: none; }
         
         /* Header */
         header { text-align: center; margin-bottom: 15px; }
-        h1 { font-family: 'Lato', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: 22pt; margin: 0 0 5px 0; color: #000; }
+        h1 { font-family: ${selectedFont.headingFamily}; text-transform: uppercase; letter-spacing: 2px; font-size: 22pt; margin: 0 0 5px 0; color: #000; }
         .contact-info { font-size: 9.5pt; color: #000; }
         
         /* Headings */
         h2 {
-          font-family: 'Lato', sans-serif;
+          font-family: ${selectedFont.headingFamily};
           text-transform: uppercase;
           font-size: 11pt;
           border-bottom: 1px solid #000;
