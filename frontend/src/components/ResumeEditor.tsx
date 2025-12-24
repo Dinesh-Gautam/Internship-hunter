@@ -80,10 +80,31 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
                 const style = doc.createElement('style');
                 style.id = 'editor-styles'; // ID to identify and remove before saving
                 style.textContent = `
-                    body { outline: none; }
-                    *:hover { outline: 1px dashed #ccc; }
-                    *:focus { outline: 2px solid #0066cc; background: rgba(0, 102, 204, 0.05); }
-                    
+                    html {
+                        background-color: #525659; /* PDF Viewer Gray */
+                        height: 100%;
+                        overflow: auto;
+                        display: flex;
+                        justify-content: center;
+                    }
+                    body { 
+                        width: 8.5in; /* US Letter Width */
+                        min-height: 11in; /* US Letter Height */
+                        margin: 20px auto; 
+                        background: white; 
+                        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                        padding: 20px; /* Match template padding */
+                        box-sizing: border-box;
+                        outline: none;
+                        max-width: none !important; /* Override template's max-width */
+                        
+                        /* Visual Page Breaks every 11 inches */
+                        background-image: linear-gradient(to bottom, transparent calc(11in - 1px), red calc(11in - 1px), red 11in);
+                        background-size: 100% 11in;
+                        background-repeat: repeat-y;
+                        position: relative;
+                    }
+
                     /* Link Styles for Visibility and Editing */
                     a { 
                         cursor: pointer; 
@@ -105,6 +126,10 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
                         vertical-align: super;
                         opacity: 0.7;
                     }
+
+                    /* Hover/Focus visual cues for editing text */
+                    *:hover { outline: 1px dashed #ccc; }
+                    *:focus { outline: 2px solid #0066cc; background: rgba(0, 102, 204, 0.05); }
                 `;
                 doc.head.appendChild(style);
 
@@ -151,9 +176,15 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
             const editorScript = clone.querySelector('#editor-script');
             if (editorScript) editorScript.remove();
 
-            // Remove contenteditable attribute
-            if (clone.querySelector('body')) {
-                clone.querySelector('body')?.removeAttribute('contenteditable');
+            // Remove contenteditable attribute and reset styles on body
+            const body = clone.querySelector('body');
+            if (body) {
+                body.removeAttribute('contenteditable');
+                // We need to clean up inline styles injected by our editor CSS if they persist (which they shouldn't as they are in the style tag we removed),
+                // BUT wait, we modified the body styles via CSS, not inline style attribute (except maybe explicitly?).
+                // Actually, the CSS rules were in the #editor-styles tag. Removing that tag removes the rules.
+                // However, check if any attributes were set. 
+                // The 'contenteditable' attribute is on the body tag itself. We removed it.
             }
 
             const html = "<!DOCTYPE html>\n" + clone.outerHTML;
@@ -195,7 +226,7 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-on-surface">Resume Editor</h2>
-                            <p className="text-sm text-on-surface-variant">Click text to edit. Click links to change URL.</p>
+                            <p className="text-sm text-on-surface-variant">Red lines indicate Page Breaks (Letter size).</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -217,7 +248,7 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 bg-surface-variant/20 p-8 overflow-hidden relative">
+                <div className="flex-1 bg-surface-variant/20 overflow-hidden relative flex flex-col">
                     {loading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-surface/50 z-10">
                             <div className="flex flex-col items-center gap-3">
@@ -242,11 +273,12 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
                         </div>
                     )}
 
-                    <div className="h-full w-full bg-white shadow-lg mx-auto max-w-[850px] overflow-hidden rounded-sm">
+                    {/* Full width container for the iframe canvas */}
+                    <div className="flex-1 w-full bg-[#525659] overflow-hidden">
                         <iframe
                             ref={iframeRef}
                             title="Resume Preview"
-                            className="w-full h-full border-none"
+                            className="w-full h-full border-none block"
                         />
                     </div>
                 </div>

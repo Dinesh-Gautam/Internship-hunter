@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { CompanyDetails, Internship } from "../interfaces/IPlugin.js";
+
+import { Internship } from "../interfaces/IPlugin.js";
 
 const AiMatchSchema = z.object({
   score: z.number().describe("Score between 0 and 100"),
@@ -438,9 +439,14 @@ export class AIService {
            - Use the "STAR" method (Situation, Task, Action, Result) where possible.
            - **Do NOT hallucinate**: Do not invent experiences or skills the candidate does not have. Only emphasize/rephrase what is already there.
         3. **Keywords**: Bold (**text**) the most critical keywords (e.g., **React**, **AWS**) that appear in the job description to highlight the match.
+
         4. **Open Source**: If the candidate has Open Source contributions, extract them into a separate 'openSource' array.
-        5. **Links**: You MUST preserve all links to projects, pull requests, or portfolios found in the original resume. Include them in the 'link' field
-        6. Remove things that are not relevant to the internship description. Make experience / project descriptions compact 
+        5. **Links**: You MUST preserve all links to projects, pull requests, or portfolios found in the original resume. Include them in the 'link' field.
+        6. **Compactness & 1-Page Goal**: 
+           - Limit details to the top 2-3 most impactful bullet points per role/project.
+           - Use concise, action-oriented language to keep the resume compact and ideally fitting on a single page. 
+           - **Prioritize** recent and relevant work over older or unrelated experience.
+           - make points in experience and project section compact / shorter
 
         **Output:**
         Return strictly the structured JSON data.
@@ -450,7 +456,7 @@ export class AIService {
         if (!this.client) throw new Error("Client initialization failed");
 
         const response = await this.client.models.generateContent({
-          model: this.modelName,
+          model: "gemini-2.5-flash",
           contents: [
             {
               role: "user",

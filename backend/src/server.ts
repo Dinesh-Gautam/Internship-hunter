@@ -735,7 +735,7 @@ app.post('/api/generate-pdf-from-html', async (req, res) => {
         const pdfBuffer = await page.pdf({
             format: 'letter',
             printBackground: true,
-            margin: { top: '0cm', right: '0.1cm', bottom: '0.1cm', left: '0.1cm' }
+            margin: { top: '0cm', right: '0cm', bottom: '0cm', left: '0cm' }
         });
         await browser.close();
 
