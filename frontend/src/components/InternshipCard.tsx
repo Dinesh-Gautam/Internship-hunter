@@ -10,6 +10,8 @@ import {
 import { useGlobalState } from '../store/global';
 
 
+import { ResumeEditor } from './ResumeEditor';
+
 export interface Internship {
     id: string;
     title: string;
@@ -277,10 +279,16 @@ export function InternshipCard({ internship, onUpdate, isSelected, onSelect }: I
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{internship.description}</ReactMarkdown>
                         </div>
 
+
                         {/* Tailor Resume Section */}
                         <div className="mt-8 pt-6 border-t border-outline/10">
-                            <TailorResumeSection internshipId={internship.id} />
+                            <TailorResumeSection
+                                internshipId={internship.id}
+                                company={internship.company}
+                                title={internship.title}
+                            />
                         </div>
+
                     </div>
                 )}
 
@@ -289,31 +297,10 @@ export function InternshipCard({ internship, onUpdate, isSelected, onSelect }: I
     );
 }
 
-function TailorResumeSection({ internshipId }: { internshipId: string }) {
-    const [tailoring, setTailoring] = useState(false);
-    const [tailoredFile, setTailoredFile] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
 
-    const handleTailor = async () => {
-        setTailoring(true);
-        setError(null);
-        try {
-            const res = await fetch(`http://localhost:3000/api/internships/${internshipId}/tailor`, {
-                method: 'POST'
-            });
-            const data = await res.json();
-            if (data.success) {
-                setTailoredFile(data.filePath);
-            } else {
-                setError(data.error || 'Failed to tailor resume');
-            }
-        } catch (err) {
-            setError('Network error or server failed');
-            console.error(err);
-        } finally {
-            setTailoring(false);
-        }
-    };
+function TailorResumeSection({ internshipId, company, title }: { internshipId: string, company: string, title: string }) {
+    const [showEditor, setShowEditor] = useState(false);
+    const [tailoredFile, setTailoredFile] = useState<string | null>(null);
 
     const handleOpenFile = async () => {
         if (!tailoredFile) return;
@@ -350,22 +337,13 @@ function TailorResumeSection({ internshipId }: { internshipId: string }) {
             {!tailoredFile ? (
                 <div className="flex items-center gap-3">
                     <p className="text-sm text-on-surface-variant flex-1">
-                        Generate a PDF resume tailored specifically for this internship using AI.
+                        Generate a PDF resume tailored specifically for this internship using AI. You can edit the content before downloading.
                     </p>
                     <button
-                        onClick={handleTailor}
-                        disabled={tailoring}
-                        className="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-sm font-medium hover:bg-secondary/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        onClick={() => setShowEditor(true)}
+                        className="px-4 py-2 bg-secondary text-on-secondary rounded-lg text-sm font-medium hover:bg-secondary/90 transition-colors flex items-center gap-2"
                     >
-                        {tailoring ? (
-                            <>
-                                <RefreshCw size={16} className="animate-spin" /> Tailoring...
-                            </>
-                        ) : (
-                            <>
-                                <FileText size={16} /> Tailor Resume
-                            </>
-                        )}
+                        <FileText size={16} /> Open Editor
                     </button>
                 </div>
             ) : (
@@ -392,15 +370,26 @@ function TailorResumeSection({ internshipId }: { internshipId: string }) {
                         >
                             Reset
                         </button>
+                        <button
+                            onClick={() => setShowEditor(true)}
+                            className="px-3 py-1.5 text-secondary hover:underline text-sm transition-colors"
+                        >
+                            Edit Again
+                        </button>
                     </div>
                 </div>
             )}
 
-            {error && (
-                <div className="mt-3 text-red-600 text-sm bg-red-50 p-2 rounded border border-red-100">
-                    Error: {error}
-                </div>
+            {showEditor && (
+                <ResumeEditor
+                    internshipId={internshipId}
+                    company={company}
+                    title={title}
+                    onClose={() => setShowEditor(false)}
+                    onSave={(path) => setTailoredFile(path)}
+                />
             )}
         </div>
     );
 }
+

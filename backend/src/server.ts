@@ -662,6 +662,7 @@ app.get('/api/run', async (req, res) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
         sendEvent({ type: 'complete', message: 'Run completed.' });
+
     } catch (error: any) {
         console.error('Error during run:', error);
         sendEvent({ type: 'error', message: error.message || 'Unknown error' });
@@ -669,6 +670,100 @@ app.get('/api/run', async (req, res) => {
         res.end();
     }
 });
+
+app.post('/api/internships/:id/tailor-content', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const internships = storage.getInternships();
+        const internship = internships.find(i => i.id === id);
+
+        if (!internship) {
+            return res.status(404).json({ error: 'Internship not found' });
+        }
+
+        console.log(`Generating tailored resume content for ${internship.company}...`);
+
+        // 1. Get Resume Text
+        const resumePath = path.resolve('uploads/resume.pdf');
+        if (!fs.existsSync(resumePath)) {
+            return res.status(400).json({ error: 'No resume found (uploads/resume.pdf)' });
+        }
+
+        const dataBuffer = await fs.promises.readFile(resumePath);
+        const parser = new Pdf({ data: dataBuffer });
+        const resumeText = (await parser.getText()).text;
+
+        // 2. Describe Internship
+        const companyData = storage.getCompany(internship.company);
+        const description = `
+            Title: ${internship.title}
+            Company: ${internship.company}
+            Skills: ${internship.skills?.join(', ') || ''}
+            Description: ${internship.description || ''}
+            About Company: ${companyData?.details?.about || ''}
+        `;
+
+        // 3. Generate Structured Resume Data
+        const resumeData = await aiService.tailorResume(description, resumeText);
+
+        if (!resumeData) {
+            return res.status(500).json({ error: 'AI failed to generate resume data' });
+        }
+
+        res.json({ success: true, data: resumeData });
+
+    } catch (error: any) {
+        console.error('Tailor content failed:', error);
+        res.status(500).json({ error: 'Failed to tailor resume content' });
+    }
+});
+
+app.post('/api/generate-pdf-from-html', async (req, res) => {
+    const { html, company, title } = req.body;
+
+    if (!html) {
+        return res.status(400).json({ error: 'HTML content is required' });
+    }
+
+    try {
+        console.log(`Generating PDF for ${company} - ${title}...`);
+
+        // 1. Generate PDF
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        const pdfBuffer = await page.pdf({
+            format: 'letter',
+            printBackground: true,
+            margin: { top: '0cm', right: '0.1cm', bottom: '0.1cm', left: '0.1cm' }
+        });
+        await browser.close();
+
+        // 2. Save PDF
+        const outputDir = path.resolve('tailored_resumes');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir);
+        }
+
+        // Sanitize filename
+        const safeCompany = (company || 'Unknown').replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const safeRole = (title || 'Internship').replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const date = new Date().toISOString().split('T')[0];
+        const filename = `${safeCompany}_${safeRole}_${date}.pdf`;
+        const outputPath = path.join(outputDir, filename);
+
+        await fs.promises.writeFile(outputPath, Buffer.from(pdfBuffer));
+
+        console.log(`Tailored resume saved to: ${outputPath}`);
+
+        res.json({ success: true, filePath: outputPath });
+
+    } catch (error: any) {
+        console.error('PDF generation failed:', error);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
