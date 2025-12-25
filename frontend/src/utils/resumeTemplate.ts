@@ -286,8 +286,10 @@ export function generateResumeHtml(data: ResumeData, fontId: string = 'classic')
       ${summary ? `<div class="section"><p>${formatText(summary)}</p></div>` : ""}
 
       ${renderSection("Experience", experienceHtml)}
-      ${openSourceHtml ? renderSection("Open Source Contributions", openSourceHtml) : ""}
-      ${projectsHtml ? renderSection("Projects", projectsHtml) : ""}
+      ${((openSource && openSource.length > 0) || (projects && projects.length > 0)) ? renderSection(
+    ((openSource && openSource.length > 0) && (projects && projects.length > 0)) ? "Projects & Open Source" : (openSource && openSource.length > 0 ? "Open Source" : "Projects"),
+    (openSourceHtml || "") + (projectsHtml || "")
+  ) : ""}
       ${renderSection("Education", educationHtml)}
       ${renderSection("Skills", skillsHtml)}
       ${certsHtml ? renderSection("Certifications", certsHtml) : ""}

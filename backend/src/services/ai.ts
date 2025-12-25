@@ -449,8 +449,8 @@ export class AIService {
       safeResumeText = safeResumeText.replace(/https?:\/\/[^\s]+/g, "[LINK_REDACTED]");
 
       const prompt = `
-        You are an expert ATS (Applicant Tracking System) optimizer and professional resume writer. 
-        Your goal is to rewrite the candidate's resume to match the provided internship description, ensuring it passes ATS filters while remaining truthful to the candidate's actual experience.
+        You are an expert career coach and ATS (Applicant Tracking System) optimizer.
+        Your goal is to rewrite the candidate's resume to strictly match the provided internship description, adhering to high-frequency trading/FAANG resume standards (clean, concise, metrics-driven).
 
         **Internship Description:**
         ${internshipDescription.substring(0, 5000)}
@@ -458,26 +458,44 @@ export class AIService {
         **Candidate Resume (Redacted for Privacy):**
         ${safeResumeText.substring(0, 10000)}
 
-        **Instructions on Contact Info:**
-        - The input resume has personal contact info redacted (e.g., [EMAIL_REDACTED]).
-        - **DO NOT** invent or hallucinate contact details.
-        - Leave the 'contact' fields empty or use the placeholders if found. They will be filled programmatically.
+        **Transformation Rules (Strict Adherence Required):**
 
-        **Strict Guidelines:**
-        1. **Professional Summary**: Write a powerful short "Professional Summary" (NOT an Objective). 
-           - **CRITICAL**: Do NOT mention the company name (e.g., "seeking internship at [Company]") or the specific role title in the summary/objective.
-           - Focus entirely on the candidate's *existing* skills, achievements, and value proposition that make them ready for this domain.
-        2. **Experience & Projects**: 
-           - Rewrite bullet points using vocabulary from the Job Description that are shorter.
-           - Use "STAR" method.
-           - **Do NOT hallucinate**: Do not invent experiences.
-        3. **Keywords**: Bold (**text**) critical keywords.
-        4. **Open Source**: Extract into 'openSource' array if present.
-        5. **Links**: If links are redacted as [LINK_REDACTED], preserve that placeholder in the 'link' field so we can restore it if possible (or the user can edit it).
-        6. **Compactness**: Limit to 2-3 bullet points per item.
+        1.  **General Tone & Formatting:**
+            -   **No Buzzwords**: Do NOT use generic terms like "hardworking", "team player", "passionate". Show, don't tell.
+            -   **Conciseness**: Aim for a density of information that fits a single-page resume.
+            -   **Relevant Info Only**: Prioritize skills/hobbies relevant to Software Engineering. Do NOT remove valid information unless completely irrelevant.
 
-        **Output:**
-        Return strictly the structured JSON data.
+        2.  **Professional Summary (Tailored for ATS):**
+            -   Write exactly **1-2 sentences**.
+            -   Integrate keywords from the Job Description naturally.
+            -   Highlight top 2-3 relevant technical skills.
+            -   **CRITICAL**: Mention years of experience **ONLY** if the candidate explicitly states them in the resume. **DO NOT calculate or round up** durations (e.g., do not turn 6 months into "1 year+"). If unsure, omit experience years.
+            -   *Forbidden*: Do NOT mention the specific company name or specifically say "Seeking a role at X". Focus on what the candidate *offers*.
+
+        3.  **Skills (Specialized & Ordered):**
+            -   **Specific**: Avoid generic "Web Development"; use "React, TypeScript, Node.js".
+            -   **Prioritize**: Place the most relevant skills for this job at the VERY TOP of the list.
+            -   **No Bloat**: Remove outdated or irrelevant technologies not requested by the JD unless they show foundational strength.
+
+        4.  **Experience & Projects (Metrics & Tech-Heavy):**
+            -   **Bullet Limit**: Strictly **2-3 bullets** per role/project.
+            -   **Structure**: Start with a strong action verb -> details of the task -> **specific technologies used** -> **quantifiable result/metric**.
+            -   *Example*: "Engineered a real-time chat service using **Socket.io** and **Redis**, reducing message latency by **40%** for 10k+ concurrent users."
+            -   **Daily Application**: Explicitly mention the tools/languages used effectively within the bullet point context.
+            -   **DATA INTEGRITY**: **DO NOT** invent dates, roles, or durations. Use exactly what is in the resume. **DO NOT** add projects that do not exist.
+            -   *Projects*: If the candidate lacks work experience, treat their best Projects as Experience, applying the same rigor.
+            -   **Dates**: Ensure month/year format if generating dates (though primarily parsing).
+
+        5.  **Education:**
+            -   Include relevant coursework or specialized achievements (Hackathons, Club Leadership).
+            -   **Exclude** generic "school projects" unless they are complex.
+
+        6.  **Redaction Handling:**
+            -   Do not hallucinate contact info. Use the provided placeholders (e.g., [EMAIL_REDACTED]) or leave fields empty if missing.
+            -   Links: Preserve [LINK_REDACTED] or existing URLs. Only include links if they seem high-quality (GitHub, Portfolios).
+
+        **Data Output Reference:**
+        -   Return strictly structure JSON conforming to the schema.
       `;
 
       return await this.retryOperation(async () => {
