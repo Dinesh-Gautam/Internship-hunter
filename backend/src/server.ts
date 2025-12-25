@@ -13,6 +13,7 @@ import path from 'path';
 import { PDFParse as Pdf } from 'pdf-parse';
 import puppeteer from 'puppeteer';
 import { exec } from 'child_process';
+import crypto from 'crypto';
 import { generateResumeHtml } from './utils/resumeTemplate.js';
 
 const app = express();
@@ -460,6 +461,62 @@ app.post('/api/extension/analyze', async (req, res) => {
     } catch (error: any) {
         console.error("Extension Analysis Error:", error);
         res.status(500).json({ error: error.message || 'Failed to analyze company' });
+    }
+});
+
+app.get('/api/internships/:id', (req, res) => {
+    try {
+        const internship = storage.getInternships().find(i => i.id === req.params.id);
+        if (!internship) {
+            return res.status(404).json({ error: 'Internship not found' });
+        }
+        // Enrich with company analysis/details if available
+        const company = storage.getCompany(internship.company);
+        const enriched = {
+            ...internship,
+            companyDetails: company?.details,
+            companyAnalysis: company?.analysis
+        };
+        res.json(enriched);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch internship' });
+    }
+});
+
+app.post('/api/resume/draft', async (req, res) => {
+    const { title, company, description, url } = req.body;
+    if (!title || !company) {
+        return res.status(400).json({ error: 'Title and Company are required' });
+    }
+
+    try {
+        const id = crypto.randomUUID();
+        const newInternship: Internship = {
+            id,
+            title,
+            company,
+            description: description || '',
+            link: url || '',
+            postedOn: new Date().toISOString(),
+            source: 'linkedin-extension',
+            seen: true, // Auto-mark as seen
+            skills: [],
+            location: '', // Could extract from description if sophisticated
+            stipend: '',
+            duration: ''
+        };
+
+        // Also ensure company exists in storage for analysis caching
+        const existingCompany = storage.getCompany(company);
+        if (!existingCompany) {
+            await storage.saveCompany(company, { details: undefined });
+        }
+
+        await storage.saveInternship(newInternship);
+        res.json({ success: true, id });
+    } catch (error) {
+        console.error("Draft Creation Error:", error);
+        res.status(500).json({ error: "Failed to create draft internship" });
     }
 });
 

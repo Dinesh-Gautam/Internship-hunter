@@ -5,6 +5,7 @@ import { ResumeUpload } from './components/ResumeUpload';
 import { RunButton } from './components/RunButton';
 import { CompaniesPage } from './components/CompaniesPage';
 import { PresetsPage } from './components/PresetsPage';
+import { ResumeTailorPage } from './components/ResumeTailorPage';
 import { useGlobalState } from './store/global';
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
@@ -93,8 +94,8 @@ export function Header() {
               key={link.path}
               to={link.path}
               className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium ${isActive
-                  ? 'bg-secondary-container text-on-secondary-container'
-                  : 'text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface'
+                ? 'bg-secondary-container text-on-secondary-container'
+                : 'text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface'
                 }`}
             >
               <Icon size={18} />
@@ -125,6 +126,7 @@ function App() {
               <Route path="/" element={<InternshipList internships={internships} onUpdate={fetchInternships} />} />
               <Route path="/companies" element={<CompaniesPage />} />
               <Route path="/presets" element={<PresetsPage />} />
+              <Route path="/tailor/:internshipId" element={<ResumeTailorPage />} />
             </Routes>
           </main>
         </div>

@@ -104,15 +104,101 @@ function checkAndInject() {
             console.log("Company page detected, injecting UI...");
             createUI();
         }
-    } else {
-        // Optional: Remove button if not on company page?
-        // usually LinkedIn removes the whole body/content so our button goes away automatically.
-        // But if it persists, we might want to hide it.
-        const btn = document.querySelector('.ai-analyzer-btn');
-        const panel = document.querySelector('.ai-analyzer-panel');
-        if (btn) btn.remove();
-        if (panel) panel.remove();
+    } else if (window.location.href.includes('/jobs/')) {
+         const btn = document.querySelector('.ai-tailor-btn');
+         // Job details load dynamically. We need to find the right container.
+         // Usually .jobs-details__main-content exists when a job is selected.
+         const container = document.querySelector('.jobs-details__main-content');
+         if (container && !btn) {
+             console.log("Job page detected, injecting UI...");
+             createJobUI();
+         }
     }
+    
+    else {
+        // cleanup if needed
+    }
+}
+
+function createJobUI() {
+    // Locate the action buttons container
+    // .jobs-s-apply or .job-details-jobs-unified-top-card__top-buttons
+    const topCardParams = document.querySelector('.job-details-jobs-unified-top-card__top-buttons') || document.querySelector('.jobs-s-apply');
+    
+    if (!topCardParams) return; // Not ready yet
+
+    const btn = document.createElement('button');
+    btn.className = 'artdeco-button artdeco-button--2 artdeco-button--secondary ai-tailor-btn';
+    btn.textContent = '✨ Tailor Resume';
+    btn.style.marginLeft = '8px';
+    btn.style.backgroundColor = '#e8f0fe';
+    btn.style.color = '#0a66c2';
+    btn.style.border = '1px solid #0a66c2';
+
+    // Avoid duplicating
+    if (document.querySelector('.ai-tailor-btn')) return;
+
+    // Append to the container. 
+    // If it's the `jobs-s-apply` container, there might be other buttons.
+    // We try to append to the parent of Apply button if possible, or just the detected container.
+    topCardParams.appendChild(btn);
+
+    btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        btn.textContent = 'Processing...';
+        btn.disabled = true;
+
+        const data = scrapeJobData();
+        console.log("Scraped Job Data:", data);
+
+        if (!data.title || !data.company) {
+             alert('Could not extract job details. Please try again.');
+             btn.textContent = '✨ Tailor Resume';
+             btn.disabled = false;
+             return;
+        }
+
+        chrome.runtime.sendMessage({
+            action: "createDraftResume",
+            data: data
+        }, (response) => {
+            btn.textContent = '✨ Tailor Resume';
+            btn.disabled = false;
+
+            if (response && response.success) {
+                // Open the frontend editor
+                window.open(`http://localhost:5173/tailor/${response.id}`, '_blank');
+            } else {
+                alert("Error: " + (response?.error || "Unknown error"));
+            }
+        });
+    });
+}
+
+function scrapeJobData() {
+    const getText = (selector) => {
+        const el = document.querySelector(selector);
+        return el ? el.innerText.trim() : "";
+    }
+
+    // Selectors based on temp.html analysis and general LinkedIn structure
+    const title = getText('.job-details-jobs-unified-top-card__job-title h1') || getText('h1');
+    const company = getText('.job-details-jobs-unified-top-card__company-name a') || getText('.job-details-jobs-unified-top-card__company-name');
+    
+    // Description is often in #job-details
+    const descriptionEl = document.querySelector('#job-details') || document.querySelector('.jobs-description-content__text');
+    const description = descriptionEl ? descriptionEl.innerText : "";
+
+    const url = window.location.href;
+
+    return {
+        title,
+        company,
+        description,
+        url
+    };
 }
 
 // Run periodically to handle SPA navigation
