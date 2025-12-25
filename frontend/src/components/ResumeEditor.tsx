@@ -34,6 +34,9 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const isUpdatingFromIframe = useRef(false);
     const editorRef = useRef<any>(null);
+    const iframeClickHandlerRef = useRef<any>(null);
+    const iframeInputHandlerRef = useRef<any>(null);
+    const iframeDebounceTimerRef = useRef<any>(null);
 
     useEffect(() => {
         loadData();
@@ -178,48 +181,83 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
         `;
         doc.head.appendChild(style);
 
-        const script = doc.createElement('script');
-        script.textContent = `
-            document.body.addEventListener('click', (e) => {
-                const link = e.target.closest('a');
-                if (link) {
+        // Clean up previous listeners if they exist
+        if (iframeClickHandlerRef.current) {
+            doc.body.removeEventListener('click', iframeClickHandlerRef.current, true);
+        }
+        if (iframeInputHandlerRef.current) {
+            doc.body.removeEventListener('input', iframeInputHandlerRef.current);
+        }
+        if (iframeDebounceTimerRef.current) {
+            clearTimeout(iframeDebounceTimerRef.current);
+        }
+
+        // Add listeners directly from parent context
+        const clickHandler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const link = target.closest('a');
+            if (link) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const rect = link.getBoundingClientRect();
+                // Since rect is relative to iframe viewport, we don't need to adjust for iframe position if we position modal absolutely inside the container which wraps the iframe?
+                // Actually the current modal is absolutely positioned inside the relative container holding the iframe.
+                // But postMessage was passing generic props. We can simpler update state directly since we are in React!
+
+                // Oh wait, rect is relative to iframe viewport. We need to respect that.
+                // Or I can trigger the state update directly here instead of postMessage!
+                // But sticking to the pattern for now, or simplifying?
+                // Let's simplify and call setEditingLink directly.
+
+                setEditingLink({
+                    url: (link as HTMLAnchorElement).href,
+                    x: rect.left,
+                    y: rect.top + rect.height
+                });
+                setLinkInput((link as HTMLAnchorElement).href);
+
+                return false;
+            } else {
+                if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
                     e.stopPropagation();
-                    const rect = link.getBoundingClientRect();
-                    window.parent.postMessage({ 
-                        type: 'EDIT_LINK', 
-                        url: link.href,
-                        x: rect.left,
-                        y: rect.top + rect.height
-                    }, '*');
-                } else {
-                    // Send text for highlighting ONLY if Ctrl/Meta is pressed
-                    if (e.ctrlKey || e.metaKey) {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         const target = e.target;
-                         if (target && target.textContent) {
-                             window.parent.postMessage({
-                                 type: 'ELEMENT_CLICKED',
-                                 text: target.textContent.substring(0, 50) 
-                             }, '*');
-                         }
+                    if (target && target.textContent) {
+                        // Dispatch custom event or just postMessage to self if we want to keep consistent?
+                        // Or just handle logic here. handleEditorDidMount ref is available.
+                        // Let's use the existing postMessage pattern just to be consistent with the effect hook, 
+                        // OR we can just emit the message to window to let the existing listener catch it?
+                        // Actually, since we are in the same scope, we can't emit to window.parent easily if we are the parent. 
+                        // We should just call the logic directly. But the logic is in an effect.
+                        // Let's just emit an event on window that our effect listens to? 
+                        // Or better, just dispatch the action.
+
+                        // Simplest: `window.postMessage` to self.
+                        window.postMessage({
+                            type: 'ELEMENT_CLICKED',
+                            text: target.textContent.substring(0, 50)
+                        }, '*');
                     }
                 }
-            }, true);
+            }
+        };
+        doc.body.addEventListener('click', clickHandler, true);
+        iframeClickHandlerRef.current = clickHandler; // Store for cleanup
 
-            let debounceTimer;
-            const notifyChange = () => {
-                 clearTimeout(debounceTimer);
-                 debounceTimer = setTimeout(() => {
-                     window.parent.postMessage({ type: 'RESUME_CONTENT_CHANGE' }, '*');
-                 }, 1000); 
-            };
-            document.body.addEventListener('input', notifyChange);
-            // Removed keyup listener to avoid redundant updates
-            document.body.contentEditable = "true";
-        `;
-        doc.body.appendChild(script);
+        const notifyChange = () => {
+            clearTimeout(iframeDebounceTimerRef.current);
+            iframeDebounceTimerRef.current = setTimeout(() => {
+                // window.parent.postMessage ... 
+                // Again, we are in the parent. Just set state?
+                // But we have isUpdatingFromIframe logic.
+                // Let's trigger the message handler via dispatch?
+                window.postMessage({ type: 'RESUME_CONTENT_CHANGE' }, '*');
+            }, 1000);
+        };
+        doc.body.addEventListener('input', notifyChange);
+        iframeInputHandlerRef.current = notifyChange; // Store for cleanup
+
+        doc.body.contentEditable = "true";
     };
 
     const getCleanHtmlFromIframe = (): string | null => {
@@ -251,7 +289,7 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
         for (let i = 0; i < links.length; i++) {
             if (links[i].href === editingLink?.url) {
                 links[i].href = linkInput;
-                links[i].textContent = linkInput; // Optional: change text if it was the URL? No, usually keep text.
+                // Only update href, not text content
                 break;
             }
         }
@@ -276,12 +314,19 @@ export function ResumeEditor({ internshipId, company, title, onClose, onSave }: 
     const handleSave = async () => {
         setSaving(true);
         try {
-            const htmlToSave = showCodeEditor ? htmlSource : (getCleanHtmlFromIframe() || htmlSource);
+            let htmlToSave = showCodeEditor ? htmlSource : (getCleanHtmlFromIframe() || htmlSource);
 
-            // 1. Save state
+            // 1. Force update link styling if legacy style is present
+            // (Fixes issue where old saved resumes have black links)
+            htmlToSave = htmlToSave.replace(
+                /a\s*{\s*color:\s*#000;\s*text-decoration:\s*none;\s*}/g,
+                'a { color: #0066cc; text-decoration: underline; }'
+            );
+
+            // 2. Save state
             await saveResumeState(htmlToSave);
 
-            // 2. Generate PDF
+            // 3. Generate PDF
             const res = await fetch('http://localhost:3000/api/generate-pdf-from-html', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
