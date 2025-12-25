@@ -367,6 +367,50 @@ app.post('/api/companies/:name/blacklist', async (req, res) => {
     }
 });
 
+app.get('/api/profile', async (req, res) => {
+    try {
+        const profile = storage.getProfile();
+        res.json(profile);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch profile' });
+    }
+});
+
+app.post('/api/profile', async (req, res) => {
+    const profile = req.body;
+    try {
+        await storage.saveProfile(profile);
+        res.json({ success: true, profile: storage.getProfile() });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to save profile' });
+    }
+});
+
+app.post('/api/internships/:id/save-resume', async (req, res) => {
+    const { id } = req.params;
+    const { html, data } = req.body;
+
+    try {
+        const internships = storage.getInternships();
+        const internship = internships.find(i => i.id === id);
+
+        if (!internship) {
+            return res.status(404).json({ error: 'Internship not found' });
+        }
+
+        await storage.saveInternship({
+            ...internship,
+            savedResumeHtml: html,
+            savedResumeData: data
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Failed to save resume state:', error);
+        res.status(500).json({ error: 'Failed to save resume state' });
+    }
+});
+
 app.post('/api/extension/analyze', async (req, res) => {
     const { name, location, about, website } = req.body;
 
@@ -681,9 +725,19 @@ app.post('/api/internships/:id/tailor-content', async (req, res) => {
             return res.status(404).json({ error: 'Internship not found' });
         }
 
+        // 1. Check for saved resume
+        if (internship.savedResumeData || internship.savedResumeHtml) {
+            console.log(`Returning saved resume for ${internship.company}`);
+            return res.json({
+                success: true,
+                data: internship.savedResumeData, // might be undefined if only HTML saved, but ideally we save both
+                html: internship.savedResumeHtml
+            });
+        }
+
         console.log(`Generating tailored resume content for ${internship.company}...`);
 
-        // 1. Get Resume Text
+        // 2. Get Resume Text
         const resumePath = path.resolve('uploads/resume.pdf');
         if (!fs.existsSync(resumePath)) {
             return res.status(400).json({ error: 'No resume found (uploads/resume.pdf)' });
@@ -693,7 +747,7 @@ app.post('/api/internships/:id/tailor-content', async (req, res) => {
         const parser = new Pdf({ data: dataBuffer });
         const resumeText = (await parser.getText()).text;
 
-        // 2. Describe Internship
+        // 3. Describe Internship
         const companyData = storage.getCompany(internship.company);
         const description = `
             Title: ${internship.title}
@@ -703,12 +757,21 @@ app.post('/api/internships/:id/tailor-content', async (req, res) => {
             About Company: ${companyData?.details?.about || ''}
         `;
 
-        // 3. Generate Structured Resume Data
-        const resumeData = await aiService.tailorResume(description, resumeText);
+        // 4. Get User Profile for Defaults
+        const userProfile = storage.getProfile();
+
+        // 5. Generate Structured Resume Data
+        const resumeData = await aiService.tailorResume(description, resumeText, userProfile);
 
         if (!resumeData) {
             return res.status(500).json({ error: 'AI failed to generate resume data' });
         }
+
+        // Save this initial generation
+        await storage.saveInternship({
+            ...internship,
+            savedResumeData: resumeData
+        });
 
         res.json({ success: true, data: resumeData });
 

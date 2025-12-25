@@ -409,7 +409,15 @@ export class AIService {
 
   async tailorResume(
     internshipDescription: string,
-    resumeText: string
+    resumeText: string,
+    userProfile?: {
+      email?: string;
+      phone?: string;
+      location?: string;
+      linkedin?: string;
+      github?: string;
+      portfolio?: string;
+    }
   ): Promise<ResumeData | null> {
     if (!this.client) {
       return null;
@@ -420,6 +428,26 @@ export class AIService {
       // Rate limit handling
       await this.sleep(4000);
 
+      // --- REDACTION LOGIC ---
+      let safeResumeText = resumeText;
+
+      // 1. Redact Email
+      safeResumeText = safeResumeText.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[EMAIL_REDACTED]");
+
+      // 2. Redact Phone (Generic matcher for 10+ digits or common formats)
+      // Matches: (123) 456-7890, 123-456-7890, 123 456 7890, +91 1234567890
+      safeResumeText = safeResumeText.replace(/(?:(?:\+|00)[\d]{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g, "[PHONE_REDACTED]");
+
+      // 3. Redact Links (Linkedin, Github, others) to prevent AI from scraping them if user wants privacy
+      // We will inject the user-provided ones later.
+      safeResumeText = safeResumeText.replace(/https?:\/\/(www\.)?linkedin\.com\/[^\s]*/g, "[LINKEDIN_REDACTED]");
+      safeResumeText = safeResumeText.replace(/https?:\/\/(www\.)?github\.com\/[^\s]*/g, "[GITHUB_REDACTED]");
+      // Note: We don't blindly redact all links as project links might be needed for context, 
+      // but user mentioned "project links" too. Let's redact generic URLs if they look personal? 
+      // For now, let's trust the specific redactions and maybe a general one if safe.
+      // User asked to hide "project links".
+      safeResumeText = safeResumeText.replace(/https?:\/\/[^\s]+/g, "[LINK_REDACTED]");
+
       const prompt = `
         You are an expert ATS (Applicant Tracking System) optimizer and professional resume writer. 
         Your goal is to rewrite the candidate's resume to match the provided internship description, ensuring it passes ATS filters while remaining truthful to the candidate's actual experience.
@@ -427,26 +455,26 @@ export class AIService {
         **Internship Description:**
         ${internshipDescription.substring(0, 5000)}
 
-        **Candidate Resume:**
-        ${resumeText.substring(0, 10000)}
+        **Candidate Resume (Redacted for Privacy):**
+        ${safeResumeText.substring(0, 10000)}
+
+        **Instructions on Contact Info:**
+        - The input resume has personal contact info redacted (e.g., [EMAIL_REDACTED]).
+        - **DO NOT** invent or hallucinate contact details.
+        - Leave the 'contact' fields empty or use the placeholders if found. They will be filled programmatically.
 
         **Strict Guidelines:**
-        1. **Professional Summary**: Write a powerful "Professional Summary" (NOT an Objective). 
+        1. **Professional Summary**: Write a powerful short "Professional Summary" (NOT an Objective). 
            - **CRITICAL**: Do NOT mention the company name (e.g., "seeking internship at [Company]") or the specific role title in the summary/objective.
            - Focus entirely on the candidate's *existing* skills, achievements, and value proposition that make them ready for this domain.
         2. **Experience & Projects**: 
-           - Rewrite bullet points to use the *vocabulary* and *keywords* found in the Internship Description.
-           - Use the "STAR" method (Situation, Task, Action, Result) where possible.
-           - **Do NOT hallucinate**: Do not invent experiences or skills the candidate does not have. Only emphasize/rephrase what is already there.
-        3. **Keywords**: Bold (**text**) the most critical keywords (e.g., **React**, **AWS**) that appear in the job description to highlight the match.
-
-        4. **Open Source**: If the candidate has Open Source contributions, extract them into a separate 'openSource' array.
-        5. **Links**: You MUST preserve all links to projects, pull requests, or portfolios found in the original resume. Include them in the 'link' field.
-        6. **Compactness & 1-Page Goal**: 
-           - Limit details to the top 2-3 most impactful bullet points per role/project.
-           - Use concise, action-oriented language to keep the resume compact and ideally fitting on a single page. 
-           - **Prioritize** recent and relevant work over older or unrelated experience.
-           - make points in experience and project section compact / shorter
+           - Rewrite bullet points using vocabulary from the Job Description that are shorter.
+           - Use "STAR" method.
+           - **Do NOT hallucinate**: Do not invent experiences.
+        3. **Keywords**: Bold (**text**) critical keywords.
+        4. **Open Source**: Extract into 'openSource' array if present.
+        5. **Links**: If links are redacted as [LINK_REDACTED], preserve that placeholder in the 'link' field so we can restore it if possible (or the user can edit it).
+        6. **Compactness**: Limit to 2-3 bullet points per item.
 
         **Output:**
         Return strictly the structured JSON data.
@@ -457,36 +485,39 @@ export class AIService {
 
         const response = await this.client.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: prompt }],
-            },
-          ],
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
           config: {
             responseMimeType: "application/json",
             responseJsonSchema: z.toJSONSchema(ResumeSchema),
           },
         });
 
+        let data: ResumeData | null = null;
+
         if (response && response.text) {
-          return JSON.parse(response.text);
-        } else if (
-          response &&
-          response.candidates &&
-          response.candidates.length > 0
-        ) {
-          const candidate = response.candidates[0];
-          if (
-            candidate.content &&
-            candidate.content.parts &&
-            candidate.content.parts.length > 0
-          ) {
-            const text = candidate.content.parts.map((p) => p.text).join(" ");
-            return JSON.parse(text);
-          }
+          data = JSON.parse(response.text);
+        } else if (response?.candidates?.[0]?.content?.parts?.[0]) {
+          const text = response.candidates[0].content.parts.map((p) => p.text).join(" ");
+          data = JSON.parse(text);
         }
-        return null;
+
+        if (data) {
+          // --- INJECTION LOGIC ---
+          // Overwrite contact details with user profile settings
+          if (!data.contact) data.contact = { linkedin: "", github: "" }; // Ensure contact object exists
+
+          if (userProfile?.email) data.contact.email = userProfile.email;
+          if (userProfile?.phone) data.contact.phone = userProfile.phone;
+          if (userProfile?.location) data.contact.location = userProfile.location;
+          if (userProfile?.linkedin) data.contact.linkedin = userProfile.linkedin;
+          if (userProfile?.github) data.contact.github = userProfile.github;
+          if (userProfile?.portfolio) data.contact.portfolio = userProfile.portfolio;
+
+          // If redacted placeholders remain and no user profile data, they might show up. 
+          // Ideally user provides data in Profile Settings.
+        }
+
+        return data;
       });
 
     } catch (error: any) {

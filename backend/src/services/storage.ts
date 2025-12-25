@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { CompanyDetails, Compnay, Internship } from '../interfaces/IPlugin.js';
+import { CompanyDetails, Compnay, Internship, UserProfile } from '../interfaces/IPlugin.js';
 
 
 export class StorageService {
@@ -13,12 +13,15 @@ export class StorageService {
     private companies: Record<string, Compnay> = {};
     private presetsPath: string;
     private presets: Record<string, string[]> = {};
+    private profilePath: string;
+    private profile: UserProfile = {};
 
     constructor(filePath?: string) {
         this.filePath = filePath || path.resolve('internships.json');
         this.blacklistPath = path.resolve('blacklist.json');
         this.companiesPath = path.resolve('companies.json');
         this.presetsPath = path.resolve('presets.json');
+        this.profilePath = path.resolve('profile.json');
     }
 
     async load() {
@@ -71,6 +74,18 @@ export class StorageService {
                 }
             }
 
+            // Load Profile
+            try {
+                const profileContent = await fs.readFile(this.profilePath, 'utf-8');
+                this.profile = JSON.parse(profileContent);
+            } catch (error: any) {
+                if (error.code === 'ENOENT') {
+                    this.profile = {};
+                } else {
+                    throw error;
+                }
+            }
+
             this.loaded = true;
             console.log(`Loaded ${this.internships.length} internships, ${this.blacklist.length} blacklisted companies, ${Object.keys(this.companies).length} cached companies, and ${Object.keys(this.presets).length} presets.`);
         } catch (error) {
@@ -108,13 +123,19 @@ export class StorageService {
     async saveInternship(internship: Internship) {
         if (!this.loaded) await this.load();
 
-        if (!this.isProcessed(internship.id)) {
-            // Add 'seen' property default to false
+        const existingIndex = this.internships.findIndex(i => i.id === internship.id);
+
+        if (existingIndex >= 0) {
+            // Update existing
+            this.internships[existingIndex] = { ...this.internships[existingIndex], ...internship };
+            console.log(`Updated internship: ${internship.title}`);
+        } else {
+            // Add new
             const newInternship = { ...internship, seen: false, savedOn: new Date() };
             this.internships.push(newInternship);
-            await fs.writeFile(this.filePath, JSON.stringify(this.internships, null, 2), 'utf-8');
-            console.log(`Saved internship: ${internship.title}`);
+            console.log(`Saved new internship: ${internship.title}`);
         }
+        await fs.writeFile(this.filePath, JSON.stringify(this.internships, null, 2), 'utf-8');
     }
 
     async toggleBlacklist(company: string) {
@@ -181,5 +202,17 @@ export class StorageService {
             delete this.presets[name];
             await fs.writeFile(this.presetsPath, JSON.stringify(this.presets, null, 2), 'utf-8');
         }
+    }
+
+
+    getProfile(): UserProfile {
+        // if (!this.loaded) throw new Error('Storage not loaded.'); // Optional: auto-load?
+        return this.profile;
+    }
+
+    async saveProfile(profile: UserProfile) {
+        if (!this.loaded) await this.load();
+        this.profile = profile;
+        await fs.writeFile(this.profilePath, JSON.stringify(this.profile, null, 2), 'utf-8');
     }
 }

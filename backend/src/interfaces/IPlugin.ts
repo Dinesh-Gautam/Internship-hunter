@@ -44,6 +44,18 @@ export interface Internship extends InternshipListing, savedMetadata {
     postedOn?: string;
     applyBy?: string;
     locationType?: "Online" | "Hybrid" | "Onsite";
+    savedResumeHtml?: string;
+    savedResumeData?: any; // serialized ResumeData
+}
+
+export interface UserProfile {
+    email?: string;
+    phone?: string;
+    location?: string;
+    linkedin?: string;
+    github?: string;
+    portfolio?: string;
+    otherLinks?: { label: string, url: string }[];
 }
 
 export interface savedMetadata {

@@ -225,8 +225,12 @@ export function generateResumeHtml(data: ResumeData, fontId: string = 'classic')
       <title>${fullName} - Resume</title>
       <link href="${selectedFont.googleFontUrl}" rel="stylesheet">
       <style>
+        :root {
+            --font-body: ${selectedFont.bodyFamily};
+            --font-heading: ${selectedFont.headingFamily};
+        }
         body {
-          font-family: ${selectedFont.bodyFamily};
+          font-family: var(--font-body);
           line-height: 1.25; 
           color: #000; /* Darker black */
           max-width: 800px;
@@ -241,12 +245,12 @@ export function generateResumeHtml(data: ResumeData, fontId: string = 'classic')
         
         /* Header */
         header { text-align: center; margin-bottom: 15px; }
-        h1 { font-family: ${selectedFont.headingFamily}; text-transform: uppercase; letter-spacing: 2px; font-size: 22pt; margin: 0 0 5px 0; color: #000; }
+        h1 { font-family: var(--font-heading); text-transform: uppercase; letter-spacing: 2px; font-size: 22pt; margin: 0 0 5px 0; color: #000; }
         .contact-info { font-size: 9.5pt; color: #000; }
         
         /* Headings */
         h2 {
-          font-family: ${selectedFont.headingFamily};
+          font-family: var(--font-heading);
           text-transform: uppercase;
           font-size: 11pt;
           border-bottom: 1px solid #000;
