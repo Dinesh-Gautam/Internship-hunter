@@ -322,12 +322,12 @@ class App {
     document.body.appendChild(btn);
 
     btn.addEventListener("click", async () => {
-      this.showAnalysisPanel();
+      // We rely on runAnalysis to show the panel with data
       this.runAnalysis(isLegacy);
     });
   }
 
-  showAnalysisPanel() {
+  showAnalysisPanel(data = null) {
     let panel = document.querySelector(".ai-analyzer-panel");
     if (!panel) {
       panel = document.createElement("div");
@@ -337,6 +337,7 @@ class App {
                     Company Analysis
                     <button class="ai-close-btn">&times;</button>
                 </h2>
+                <div class="ai-context" style="display:none; margin-bottom:15px; background:#f0f7ff; padding:10px; border-radius:4px; font-size:13px;"></div>
                 <div class="ai-loader">Analyzing... <br><small>This may take a few seconds</small></div>
                 <div class="ai-result ai-analyzer-content"></div>
             `;
@@ -349,6 +350,20 @@ class App {
     panel.classList.add("visible");
     panel.querySelector(".ai-loader").classList.add("visible");
     panel.querySelector(".ai-result").textContent = "";
+
+    const contextEl = panel.querySelector(".ai-context");
+    if (data) {
+      contextEl.style.display = "block";
+      contextEl.innerHTML = `
+            <strong>Analyzing:</strong> ${data.name}<br>
+            <strong>Location:</strong> ${data.location || "N/A"}<br>
+            <strong>About:</strong> <span title="${data.about}">${
+        data.about ? data.about.substring(0, 100) + "..." : "N/A"
+      }</span>
+        `;
+    } else {
+      contextEl.style.display = "none";
+    }
   }
 
   runAnalysis(isLegacy) {
@@ -358,6 +373,9 @@ class App {
     } else {
       data = this.scrapeFromConfig();
     }
+
+    // Pass data to showAnalysisPanel to display context
+    this.showAnalysisPanel(data);
 
     console.log("Scraped Data:", data);
 
