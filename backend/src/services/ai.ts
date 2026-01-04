@@ -46,44 +46,62 @@ export const ResumeSchema = z.object({
     location: z.string().optional(),
   }),
   summary: z.string().describe("A professional summary tailored to the job"),
-  education: z.array(z.object({
-    institution: z.string(),
-    degree: z.string(),
-    location: z.string().optional(),
-    date: z.string(),
-    details: z.array(z.string()).optional()
-  })),
-  experience: z.array(z.object({
-    company: z.string(),
-    role: z.string(),
-    location: z.string().optional(),
-    date: z.string(),
-    details: z.array(z.string()).describe("Action-oriented bullet points tailored to the job")
-  })),
-  projects: z.array(z.object({
-    name: z.string(),
-    link: z.string().describe("URL to the project or PR"),
-    technologies: z.string().optional(),
-    date: z.string().optional(),
-    details: z.array(z.string())
-  })).optional(),
-  openSource: z.array(z.object({
-    name: z.string(),
-    role: z.string().optional().describe("Contributor, Maintainer, etc."),
-    link: z.string(),
-    details: z.array(z.string())
-  })).optional(),
+  education: z.array(
+    z.object({
+      institution: z.string(),
+      degree: z.string(),
+      location: z.string().optional(),
+      date: z.string(),
+      details: z.array(z.string()).optional(),
+    })
+  ),
+  experience: z.array(
+    z.object({
+      company: z.string(),
+      role: z.string(),
+      location: z.string().optional(),
+      date: z.string(),
+      details: z
+        .array(z.string())
+        .describe("Action-oriented bullet points tailored to the job"),
+    })
+  ),
+  projects: z
+    .array(
+      z.object({
+        name: z.string(),
+        link: z.string().describe("URL to the project or PR"),
+        technologies: z.string().optional(),
+        date: z.string().optional(),
+        details: z.array(z.string()),
+      })
+    )
+    .optional(),
+  openSource: z
+    .array(
+      z.object({
+        name: z.string(),
+        role: z.string().optional().describe("Contributor, Maintainer, etc."),
+        link: z.string(),
+        details: z.array(z.string()),
+      })
+    )
+    .optional(),
   skills: z.object({
     languages: z.array(z.string()).optional(),
     frameworks: z.array(z.string()).optional(),
     tools: z.array(z.string()).optional(),
-    softSkills: z.array(z.string()).optional()
+    softSkills: z.array(z.string()).optional(),
   }),
-  certifications: z.array(z.object({
-    name: z.string(),
-    issuer: z.string(),
-    date: z.string().optional()
-  })).optional()
+  certifications: z
+    .array(
+      z.object({
+        name: z.string(),
+        issuer: z.string(),
+        date: z.string().optional(),
+      })
+    )
+    .optional(),
 });
 
 export type ResumeData = z.infer<typeof ResumeSchema>;
@@ -106,7 +124,10 @@ export class AIService {
         .map((k) => k.trim())
         .filter((k) => k.length > 0);
 
-      console.log(`AI Service initialized with ${this.apiKeys.length} keys.`, this.apiKeys);
+      console.log(
+        `AI Service initialized with ${this.apiKeys.length} keys.`,
+        this.apiKeys
+      );
       if (this.apiKeys.length > 0) {
         this.client = new GoogleGenAI({ apiKey: this.apiKeys[0] });
         console.log(
@@ -168,7 +189,6 @@ export class AIService {
           this.rotateApiKey();
         }
 
-
         await this.sleep(delay);
         return this.retryOperation(operation, retries - 1, delay * 2);
       }
@@ -206,11 +226,13 @@ export class AIService {
         2. Identify the company's website URL.
         3. Estimate the company size (New/Small/Medium/Large).
         4. Determine if it's a well-known brand (like Zomato) or a small/unknown entity (like an individual name).
+        5. Search for the typical salary range for entry-level positions at this company for software/frontend/fullstack developer.
 
         Output format in tabular format:
         **Rating:** [1-10]/10
         **Verdict:** [Good/Bad/Neutral]
         **Company Size:** [New/Small/Medium/Large]
+        **Salary Range:** [Estimated Range or "Unknown"]
         **Website:** [URL in proper markdown format or "Not Found"]
         **Legitimacy:** [Verified/Unverified/Suspicious]
         **Summary:** [2 sentences on why]
@@ -432,21 +454,36 @@ export class AIService {
       let safeResumeText = resumeText;
 
       // 1. Redact Email
-      safeResumeText = safeResumeText.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[EMAIL_REDACTED]");
+      safeResumeText = safeResumeText.replace(
+        /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+        "[EMAIL_REDACTED]"
+      );
 
       // 2. Redact Phone (Generic matcher for 10+ digits or common formats)
       // Matches: (123) 456-7890, 123-456-7890, 123 456 7890, +91 1234567890
-      safeResumeText = safeResumeText.replace(/(?:(?:\+|00)[\d]{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g, "[PHONE_REDACTED]");
+      safeResumeText = safeResumeText.replace(
+        /(?:(?:\+|00)[\d]{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g,
+        "[PHONE_REDACTED]"
+      );
 
       // 3. Redact Links (Linkedin, Github, others) to prevent AI from scraping them if user wants privacy
       // We will inject the user-provided ones later.
-      safeResumeText = safeResumeText.replace(/https?:\/\/(www\.)?linkedin\.com\/[^\s]*/g, "[LINKEDIN_REDACTED]");
-      safeResumeText = safeResumeText.replace(/https?:\/\/(www\.)?github\.com\/[^\s]*/g, "[GITHUB_REDACTED]");
-      // Note: We don't blindly redact all links as project links might be needed for context, 
-      // but user mentioned "project links" too. Let's redact generic URLs if they look personal? 
+      safeResumeText = safeResumeText.replace(
+        /https?:\/\/(www\.)?linkedin\.com\/[^\s]*/g,
+        "[LINKEDIN_REDACTED]"
+      );
+      safeResumeText = safeResumeText.replace(
+        /https?:\/\/(www\.)?github\.com\/[^\s]*/g,
+        "[GITHUB_REDACTED]"
+      );
+      // Note: We don't blindly redact all links as project links might be needed for context,
+      // but user mentioned "project links" too. Let's redact generic URLs if they look personal?
       // For now, let's trust the specific redactions and maybe a general one if safe.
       // User asked to hide "project links".
-      safeResumeText = safeResumeText.replace(/https?:\/\/[^\s]+/g, "[LINK_REDACTED]");
+      safeResumeText = safeResumeText.replace(
+        /https?:\/\/[^\s]+/g,
+        "[LINK_REDACTED]"
+      );
 
       const prompt = `
         You are an expert career coach and ATS (Applicant Tracking System) optimizer.
@@ -515,7 +552,9 @@ export class AIService {
         if (response && response.text) {
           data = JSON.parse(response.text);
         } else if (response?.candidates?.[0]?.content?.parts?.[0]) {
-          const text = response.candidates[0].content.parts.map((p) => p.text).join(" ");
+          const text = response.candidates[0].content.parts
+            .map((p) => p.text)
+            .join(" ");
           data = JSON.parse(text);
         }
 
@@ -526,18 +565,20 @@ export class AIService {
 
           if (userProfile?.email) data.contact.email = userProfile.email;
           if (userProfile?.phone) data.contact.phone = userProfile.phone;
-          if (userProfile?.location) data.contact.location = userProfile.location;
-          if (userProfile?.linkedin) data.contact.linkedin = userProfile.linkedin;
+          if (userProfile?.location)
+            data.contact.location = userProfile.location;
+          if (userProfile?.linkedin)
+            data.contact.linkedin = userProfile.linkedin;
           if (userProfile?.github) data.contact.github = userProfile.github;
-          if (userProfile?.portfolio) data.contact.portfolio = userProfile.portfolio;
+          if (userProfile?.portfolio)
+            data.contact.portfolio = userProfile.portfolio;
 
-          // If redacted placeholders remain and no user profile data, they might show up. 
+          // If redacted placeholders remain and no user profile data, they might show up.
           // Ideally user provides data in Profile Settings.
         }
 
         return data;
       });
-
     } catch (error: any) {
       console.error("Error tailoring resume:", error);
       throw error;
