@@ -321,10 +321,11 @@ export function generateResumeHtml(
           font-family: var(--font-body);
           line-height: 1.25; 
           color: #000; /* Darker black */
-          max-width: 800px;
+          width: 8.5in !important;
+          height: 11in !important;
           margin: 0 auto;
           padding: 20px;
-          font-size: 10.5pt;
+          font-size: 10px;
           font-weight: 400;
           background: white; /* Ensure white background for PDF */
         }
