@@ -3,30 +3,16 @@
   "name": "LinkedIn Company Analyzer",
   "version": "1.0",
   "description": "Analyze LinkedIn companies using local AI Service",
-  "permissions": [
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "*://www.linkedin.com/*",
-    "http://localhost:3000/*"
-  ],
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://www.linkedin.com/company/*",
-        "https://www.linkedin.com/jobs/*"
-      ],
-      "js": [
-        "marked.min.js",
-        "content.js"
-      ],
-      "css": [
-        "styles.css"
-      ]
+      "matches": ["<all_urls>"],
+      "js": ["marked.min.js", "content.js"],
+      "css": ["styles.css"]
     }
   ],
   "action": {

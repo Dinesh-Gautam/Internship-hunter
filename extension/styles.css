@@ -108,3 +108,145 @@
 .ai-loader.visible {
     display: block;
 }
+
+/* Configuration Panel */
+.ai-config-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.ai-config-header {
+    background: #f8f9fa;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ai-config-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.ai-close-config {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #888;
+}
+
+.ai-config-body {
+    padding: 16px;
+}
+
+.ai-field-group {
+    margin-bottom: 15px;
+}
+
+.ai-field-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #555;
+}
+
+.ai-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.ai-input-row input {
+    flex: 1;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #f9f9f9;
+}
+
+.ai-pick-btn {
+    padding: 0 10px;
+    background: #eef3f8;
+    border: 1px solid #dce6f1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.ai-pick-btn:hover {
+    background: #dce6f1;
+}
+
+.ai-preview-text {
+    font-size: 11px;
+    color: #27ae60;
+    margin-top: 4px;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 16px;
+}
+
+
+.ai-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.ai-actions button {
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.ai-actions button.primary {
+    background-color: #0a66c2;
+    color: white;
+}
+
+.ai-actions button.primary:hover {
+    background-color: #004182;
+}
+
+.ai-actions button.danger {
+    background-color: white;
+    color: #d11124;
+    border: 1px solid #d11124;
+}
+
+.ai-actions button.danger:hover {
+    background-color: #fff5f5;
+}

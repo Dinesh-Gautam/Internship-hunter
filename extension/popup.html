@@ -2,12 +2,36 @@
 <html>
 <head>
   <style>
-    body { width: 200px; padding: 10px; font-family: sans-serif; }
-    button { width: 100%; padding: 8px; cursor: pointer; }
+    body { width: 250px; padding: 15px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; }
+    h3 { margin-top: 0; font-size: 18px; color: #0a66c2; }
+    p { font-size: 13px; color: #666; }
+    button { 
+      width: 100%; 
+      padding: 10px; 
+      margin-top: 10px;
+      cursor: pointer; 
+      background-color: #0a66c2; 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+    button:hover { background-color: #004182; }
+    button.secondary {
+      background-color: white;
+      color: #0a66c2;
+      border: 1px solid #0a66c2;
+    }
+    button.secondary:hover { background-color: #f3f9ff; }
   </style>
 </head>
 <body>
-  <h3>Company Analyzer</h3>
-  <p>Visit a LinkedIn Company page to use this.</p>
+  <h3>Internship Hunter</h3>
+  <p>Automate your job hunt.</p>
+  <div id="controls">
+    <button id="configure-btn" class="secondary">⚙️ Configure for this Site</button>
+  </div>
+  <script src="popup.js"></script>
 </body>
 </html>
