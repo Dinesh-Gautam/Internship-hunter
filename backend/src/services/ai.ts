@@ -439,7 +439,9 @@ export class AIService {
       linkedin?: string;
       github?: string;
       portfolio?: string;
-    }
+      globalResumeInstructions?: string;
+    },
+    additionalInfo?: string
   ): Promise<ResumeData | null> {
     if (!this.client) {
       return null;
@@ -495,7 +497,23 @@ export class AIService {
         **Candidate Resume (Redacted for Privacy):**
         ${safeResumeText.substring(0, 10000)}
 
+        ${
+          additionalInfo
+            ? `**Additional Context/Instructions from Candidate:**
+        ${additionalInfo}
+        (Use the above information to enrich the resume, add specific project links, or emphasize certain skills/experiences as requested.)`
+            : ""
+        }
+
+        ${
+          userProfile?.globalResumeInstructions
+            ? `**Global Resume Instructions (Apply to ALL applications):**
+        ${userProfile.globalResumeInstructions}`
+            : ""
+        }
+
         **Transformation Rules (Strict Adherence Required):**
+
 
         1.  **General Tone & Formatting:**
             -   **No Buzzwords**: Do NOT use generic terms like "hardworking", "team player", "passionate". Show, don't tell.
