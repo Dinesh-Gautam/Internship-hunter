@@ -518,6 +518,7 @@ export class AIService {
         1.  **General Tone & Formatting:**
             -   **No Buzzwords**: Do NOT use generic terms like "hardworking", "team player", "passionate". Show, don't tell.
             -   **Conciseness**: Aim for a density of information that fits a single-page resume.
+            -   **Format & Highlight**: Use markdown bolding (e.g. **keyword**) to highlight key technologies, metrics/numbers, and impact.
             -   **Relevant Info Only**: Prioritize skills/hobbies relevant to Software Engineering. Do NOT remove valid information unless completely irrelevant.
 
         2.  **Professional Summary (Tailored for ATS):**

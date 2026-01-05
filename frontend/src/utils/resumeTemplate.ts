@@ -223,7 +223,9 @@ export function generateResumeHtml(
       </div>
       ${
         proj.technologies
-          ? `<div class="item-sub"><i>Technologies: ${proj.technologies}</i></div>`
+          ? `<div class="item-sub"><i>Technologies: ${formatText(
+              proj.technologies
+            )}</i></div>`
           : ""
       }
       ${renderList(proj.details)}
@@ -322,10 +324,10 @@ export function generateResumeHtml(
           line-height: 1.25; 
           color: #000; /* Darker black */
           width: 8.5in !important;
-          height: 11in !important;
+          height: 11.85in !important;
           margin: 0 auto;
           padding: 20px;
-          font-size: 10px;
+          font-size: 10pt;
           font-weight: 400;
           background: white; /* Ensure white background for PDF */
         }
@@ -354,7 +356,7 @@ export function generateResumeHtml(
         /* Items */
         .item { margin-bottom: 8px; }
         .item-header { display: flex; justify-content: space-between; font-weight: 700; font-size: 11pt; color: #000; }
-        .item-sub { display: flex; justify-content: space-between; font-style: italic; margin-bottom: 1px; font-size: 10pt; color: #222; }
+        .item-sub { display: flex; justify-content: space-between; font-style: italic; margin-bottom: 1px; font-size: 9pt; color: #222; }
         
         /* Lists */
         ul { margin: 1px 0 4px 16px; padding: 0; }

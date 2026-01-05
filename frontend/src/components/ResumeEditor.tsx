@@ -247,7 +247,7 @@ export function ResumeEditor({
     style.id = "editor-styles";
     style.textContent = `
             html { background-color: #525659; height: 100%; overflow: auto; display: flex; justify-content: center; }
-            body { min-width: 8.5in; min-height: 10.75in; margin: 20px auto; background: white; padding: 20px; box-sizing: border-box; outline: none; position: relative; }
+            body { min-width: 8.5in; min-height: 11.85in; margin: 20px auto; background: white; padding: 20px; padding-bottom: 0px; box-sizing: border-box; outline: none; position: relative; }
             a { cursor: pointer; border-bottom: 2px solid #0066cc; color: #0066cc; text-decoration: none; position: relative; }
             a:hover { background: rgba(0, 102, 204, 0.1); }
             *:hover { outline: 1px dashed #ccc; }
